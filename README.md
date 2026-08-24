@@ -1,10 +1,25 @@
 # Finansal Risk & Portföy Analiz Platformu
 
-Kullanıcının hisse/ETF/kripto gibi varlıklar için gerçek fiyat verisini
-inceleyebildiği, risk/getiri/teknik metrikleri görebildiği, ağırlıklı bir
-portföy kurup performansını (endeks karşılaştırması, korelasyon, optimizasyon,
-stres testi dahil) analiz edebildiği ve gerçek alım işlemlerini takip
-edebildiği tam kapsamlı bir web uygulaması.
+Hisse, ETF ve kripto para gibi varlıklar için gerçek piyasa verisiyle
+risk/getiri analizi yapan, ağırlıklı portföyler kurup optimize eden ve
+gerçek alım işlemlerini takip eden tam kapsamlı bir finans platformu.
+
+[![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](backend/requirements.txt)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](backend/main.py)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](frontend/package.json)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)](frontend/tsconfig.json)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](frontend/vite.config.ts)
+[![WebSocket](https://img.shields.io/badge/Live%20Data-WebSocket-black)](backend/services/ws_manager.py)
+
+## Canlı Demo
+
+| | |
+|---|---|
+| **Uygulama** | [portfolio-analyzer-smoky.vercel.app](https://portfolio-analyzer-smoky.vercel.app) |
+| **API (Swagger)** | [portfolio-analyzer-backend-fys1.onrender.com/docs](https://portfolio-analyzer-backend-fys1.onrender.com/docs) |
+
+> Backend ücretsiz Render katmanında çalışıyor — uzun süre istek gelmezse
+> uykuya geçer, ilk istekte ~50 saniyeye kadar gecikme normaldir.
 
 Sabit bir hisse listesiyle sınırlı değildir — arama çubuğuyla (Ctrl+K)
 Yahoo Finance'teki hemen hemen her hisse, ETF veya kripto para aranıp tek
@@ -29,12 +44,14 @@ tipografisi, altın vurgu rengi) sahiptir.
 
 ## İçindekiler
 
+- [Canlı Demo](#canlı-demo)
 - [Ekran Görüntüleri](#ekran-görüntüleri)
 - [Özellikler](#özellikler)
 - [Kullanılan Teknolojiler](#kullanılan-teknolojiler)
 - [Mimari](#mimari)
 - [Kurulum](#kurulum)
 - [Çalıştırma](#çalıştırma)
+- [Dağıtım (Deployment)](#dağıtım-deployment)
 - [Ortam Değişkenleri](#ortam-değişkenleri)
 - [Testler](#testler)
 - [Veritabanı Yapısı](#veritabanı-yapısı)
@@ -105,7 +122,8 @@ tipografisi, altın vurgu rengi) sahiptir.
 
 **Backend**
 - Python, FastAPI, WebSocket (canlı veri yayını)
-- SQLAlchemy (ORM) + MS SQL Server (pyodbc), Alembic (migration'lar)
+- SQLAlchemy (ORM) + MS SQL Server (pyodbc) / PostgreSQL (psycopg2), Alembic
+  (migration'lar)
 - JWT + TOTP tabanlı kimlik doğrulama (PyJWT, bcrypt, pyotp)
 - pandas / numpy / scipy — getiri, volatilite, Sharpe, drawdown, portföy
   optimizasyonu hesaplamaları
@@ -125,7 +143,42 @@ tipografisi, altın vurgu rengi) sahiptir.
 - i18next (Türkçe/İngilizce), vite-plugin-pwa
 - Vitest (birim/komponent testleri), Playwright (uçtan uca testler)
 
+**Altyapı**
+- Frontend: Vercel (statik SPA dağıtımı)
+- Backend: Render (Web Service + yönetilen PostgreSQL, Blueprint ile
+  `render.yaml` üzerinden)
+
 ## Mimari
+
+```mermaid
+flowchart LR
+    subgraph Client["Tarayıcı"]
+        UI["React SPA (Vite)"]
+    end
+
+    subgraph Vercel
+        UI
+    end
+
+    subgraph Render["Render — Web Service"]
+        API["FastAPI"]
+        WS["WebSocket\ncanlı fiyat/haber yayını"]
+        BG["asyncio arka plan görevleri\notomatik fiyat yenileme"]
+    end
+
+    DB[("PostgreSQL / MS SQL Server")]
+    YF["Yahoo Finance"]
+    WB["World Bank Open Data"]
+
+    UI -- "REST (HTTPS)" --> API
+    UI <-- "WebSocket (WSS)" --> WS
+    API --> DB
+    BG --> DB
+    API --> YF
+    API --> WB
+    BG --> YF
+    WS --> BG
+```
 
 ```
 backend/
@@ -201,12 +254,13 @@ sunucusuz (serverless) bir platformda çalışamaz:
 - **Frontend → Vercel**: repoyu Vercel'de import edip kök dizin olarak
   `frontend`'i seçmeniz yeterli (`frontend/vercel.json` SPA yönlendirmesini
   halleder). `VITE_API_BASE_URL` ortam değişkenini backend'in gerçek adresine
-  ayarlayın.
+  ayarlayın. Canlı örnek: [portfolio-analyzer-smoky.vercel.app](https://portfolio-analyzer-smoky.vercel.app).
 - **Backend → Render**: repo kökündeki `render.yaml` bir Render Blueprint'i —
   Render'da "New → Blueprint" ile bu repoyu seçtiğinizde backend'i ve
   yönetilen ücretsiz bir PostgreSQL veritabanını otomatik kurar
   (`DATABASE_URL` aralarında otomatik bağlanır). Deploy sonrası backend'in
   `CORS_ORIGINS` ortam değişkenini gerçek Vercel adresinizle güncelleyin.
+  Canlı örnek: [portfolio-analyzer-backend-fys1.onrender.com](https://portfolio-analyzer-backend-fys1.onrender.com/docs).
 
 Yerel geliştirmede hâlâ MS SQL Server kullanılır; `DATABASE_URL` sadece
 ayarlandığında devreye girer (bkz. `backend/.env.example`).
@@ -245,7 +299,8 @@ npm run test:e2e
 
 ## Veritabanı Yapısı
 
-MS SQL Server üzerinde, SQLAlchemy modelleri ile tanımlanan başlıca tablolar:
+MS SQL Server / PostgreSQL üzerinde, SQLAlchemy modelleri ile tanımlanan
+başlıca tablolar:
 
 | Tablo | Açıklama |
 |---|---|
