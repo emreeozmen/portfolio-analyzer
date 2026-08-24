@@ -7,16 +7,24 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
+      # Pinned so pip can resolve prebuilt wheels for pandas/numpy/scipy — without
+      # this, Render's default (much newer) Python has no matching wheels for the
+      # pinned versions in requirements.txt and pip falls back to building each one
+      # from source, which is extremely slow (scipy alone can take 20+ minutes, or
+      # fail outright without a Fortran toolchain). Keep this in sync with the
+      # Python version requirements.txt's pins were built against (see backend/venv).
+      - key: PYTHON_VERSION
+        value: 3.11.9
       - key: DATABASE_URL
         fromDatabase:
           name: portfolio-analyzer-db
           property: connectionString
       - key: JWT_SECRET_KEY
         generateValue: true
-      # Update this after the frontend is deployed to Vercel — must match the real
-      # Vercel URL exactly (no trailing slash) or the browser will block API calls.
+      # Must match the real Vercel URL exactly (no trailing slash) or the browser
+      # will block API calls with a CORS error.
       - key: CORS_ORIGINS
-        value: https://portfolio-analyzer.vercel.app
+        value: https://portfolio-analyzer-smoky.vercel.app
 
 databases:
   - name: portfolio-analyzer-db
