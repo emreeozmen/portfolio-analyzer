@@ -6,15 +6,30 @@ portföy kurup performansını (endeks karşılaştırması, korelasyon, optimiz
 stres testi dahil) analiz edebildiği ve gerçek alım işlemlerini takip
 edebildiği tam kapsamlı bir web uygulaması.
 
-Varsayılan olarak 5 BIST hissesiyle (THYAO, ASELS, GARAN, TUPRS, AKBNK) gelir
-ama bununla sınırlı değildir — arama çubuğuyla Yahoo Finance'teki hemen hemen
-her hisse/ETF/kripto para aranıp tek tıkla izleme listesine eklenebilir.
-Arayüz, profesyonel bir finans terminali hissi veren, koyu/açık tema
-seçenekli bir tasarıma (IBM Plex Sans/Mono tipografisi, altın vurgu rengi)
-sahiptir.
+Sabit bir hisse listesiyle sınırlı değildir — arama çubuğuyla (Ctrl+K)
+Yahoo Finance'teki hemen hemen her hisse, ETF veya kripto para aranıp tek
+tıkla izleme listesine eklenir; eklenen her varlık o andan itibaren gerçek
+~1 yıllık fiyat geçmişiyle uygulamanın her yerinde (Piyasa Görünümü, Varlık
+Listesi, Portföy Oluşturma) kullanılabilir hale gelir. THYAO, ASELS, GARAN,
+TUPRS ve AKBNK gibi birkaç BIST hissesi kurulumla birlikte hazır gelir,
+sadece bir başlangıç noktasıdır. Arayüz, profesyonel bir finans terminali
+hissi veren, koyu/açık tema seçenekli bir tasarıma (IBM Plex Sans/Mono
+tipografisi, altın vurgu rengi) sahiptir.
+
+## Ekran Görüntüleri
+
+|  |  |
+|---|---|
+| ![Ana Sayfa](screenshots/home.jpg) | ![Piyasa Görünümü](screenshots/market.jpg) |
+| **Ana Sayfa** — canlı piyasa özeti, izleme listesi, yükselenler | **Piyasa Görünümü** — tüm varlıklar için kart görünümü |
+| ![Varlık Analizi](screenshots/asset-detail.jpg) | ![Portföy Analizi](screenshots/portfolio.jpg) |
+| **Varlık Analizi** — mum grafiği, SMA/RSI, fiyat uyarıları | **Portföy Analizi** — endeks karşılaştırması, risk metrikleri |
+| ![Küresel Ekonomik Göstergeler](screenshots/inflation-map.jpg) | |
+| **Küresel Ekonomik Göstergeler** — döner 3D küre üzerinde ülke bazlı enflasyon/GSYH/işsizlik | |
 
 ## İçindekiler
 
+- [Ekran Görüntüleri](#ekran-görüntüleri)
 - [Özellikler](#özellikler)
 - [Kullanılan Teknolojiler](#kullanılan-teknolojiler)
 - [Mimari](#mimari)
