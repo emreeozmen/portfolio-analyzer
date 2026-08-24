@@ -1,0 +1,26 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+backend/.env
+.pytest_cache/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+frontend/playwright/.cache/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+frontend/coverage/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Stray local dev logs (not part of the app, never versioned)
+*.log

@@ -1,0 +1,84 @@
+{
+  "skipToContent": "Skip to content",
+  "brand": "Financial Risk & Portfolio Analysis Platform",
+  "nav": {
+    "home": "Home",
+    "market": "Market Overview",
+    "assets": "Asset Analysis",
+    "portfolio": "Portfolio Analysis",
+    "crypto": "Crypto",
+    "inflation": "Inflation",
+    "account": "Account",
+    "logout": "Log out",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
+  },
+  "theme": {
+    "switchToLight": "Switch to light theme",
+    "switchToDark": "Switch to dark theme"
+  },
+  "language": {
+    "switchToEnglish": "Switch to English",
+    "switchToTurkish": "Switch to Turkish"
+  },
+  "footer": {
+    "tagline": "Risk, return, and portfolio analytics for BIST and global markets — all in one platform.",
+    "platformHeading": "Platform",
+    "resourcesHeading": "Data & Updates",
+    "dataSource": "Price data: Yahoo Finance",
+    "updateFrequency": "Prices auto-refresh roughly every 5 minutes",
+    "liveNote": "Live alerts are pushed instantly over WebSocket",
+    "disclaimer": "The data and calculations here are for informational purposes only and do not constitute investment advice.",
+    "meta": "Price data: Yahoo Finance · © {{year}}"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "body": "The page you're looking for may have moved or never existed.",
+    "backHome": "Back to home"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "body": "The page ran into an unexpected error. This is usually temporary — reloading the page often fixes it.",
+    "reload": "Reload page"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "loading": "Loading…",
+    "retry": "Retry"
+  },
+  "notAvailable": "Unknown",
+  "chart": "Chart",
+  "notifications": {
+    "ariaWithUnread": "Notifications ({{count}} unread)",
+    "aria": "Notifications",
+    "empty": "No triggered alerts yet.",
+    "deleteAria": "Delete alert",
+    "viewAll": "Manage all alerts →"
+  },
+  "symbolSearch": {
+    "placeholder": "Search symbol or company (Ctrl+K)",
+    "aria": "Search symbol or company",
+    "searching": "Searching...",
+    "noResults": "No results found",
+    "tracked": "Tracked",
+    "adding": "Adding...",
+    "add": "Add"
+  },
+  "topMovers": {
+    "gainers": "Gainers",
+    "losers": "Losers",
+    "noGainersToday": "No assets are up today.",
+    "noLosersToday": "No assets are down today."
+  },
+  "watchlist": {
+    "header": "Watchlist",
+    "lastUpdated": "Last updated: {{time}}",
+    "symbol": "Symbol",
+    "last": "Last",
+    "changePercent": "Chg%"
+  }
+}

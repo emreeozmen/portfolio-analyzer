@@ -1,0 +1,16 @@
+{
+  "title": "Kripto Piyasası",
+  "intro": "Takip edilen {{count}} kripto para — günlük değişime göre en çok kazanan/kaybeden 5 varlık ve piyasa değerine göre sıralanmış tam liste, Yahoo Finance üzerinden gerçek verilerle.",
+  "lastUpdated": "Son güncelleme: {{time}} · her dakika otomatik yenilenir",
+  "topGainers": "🏆 En Çok Kazananlar",
+  "topLosers": "📉 En Çok Kaybedenler",
+  "noGainersToday": "Bugün artıda kripto para yok.",
+  "noLosersToday": "Bugün ekside kripto para yok.",
+  "allByMarketCap": "Piyasa Değerine Göre Tüm Kripto Paralar",
+  "columnRank": "#",
+  "columnAsset": "Varlık",
+  "columnPrice": "Fiyat",
+  "columnMarketCap": "Piyasa Değeri",
+  "columnChange24h": "24s Değişim",
+  "footerNote": "Kripto para piyasaları 7/24 işlem görür; buradaki değişim, son ~24 saatlik kapanış farkına dayanır. Yatırım tavsiyesi değildir."
+}

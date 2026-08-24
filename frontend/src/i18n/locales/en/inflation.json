@@ -1,0 +1,46 @@
+{
+  "title": "Global Economic Indicators",
+  "dragHint": "The globe rotates on its own — you can also click and drag to spin it.",
+  "loading": "Loading...",
+  "noData": "No data",
+  "tabs": {
+    "inflation": "Inflation",
+    "gdp": "GDP Growth",
+    "unemployment": "Unemployment"
+  },
+  "intros": {
+    "inflation": "The latest annual CPI inflation rate by country — from the World Bank open data API. Inflation is never a live figure anywhere: statistical agencies publish this data monthly/annually with a few months' delay; every country on the globe shows its own latest published year.",
+    "gdp": "The latest annual GDP (gross domestic product) growth rate by country — from the World Bank open data API. This is an officially published annual figure, not a live one; every country on the globe shows its own latest published year.",
+    "unemployment": "The latest annual unemployment rate (as a share of the labor force) by country — from the World Bank open data API. This is an officially published annual figure, not a live one; every country on the globe shows its own latest published year."
+  },
+  "bandsInflation": {
+    "deflation": "Deflation (< 0%)",
+    "b0to4": "0% – 4%",
+    "b4to10": "4% – 10%",
+    "b10to25": "10% – 25%",
+    "b25plus": "25%+"
+  },
+  "bandsGdp": {
+    "negative": "Contraction (< 0%)",
+    "b0to2": "0% – 2%",
+    "b2to4": "2% – 4%",
+    "b4to7": "4% – 7%",
+    "b7plus": "7%+"
+  },
+  "bandsUnemployment": {
+    "b0to4": "0% – 4%",
+    "b4to7": "4% – 7%",
+    "b7to12": "7% – 12%",
+    "b12plus": "12%+"
+  },
+  "highest": {
+    "inflation": "Highest Inflation",
+    "gdp": "Highest Growth",
+    "unemployment": "Highest Unemployment"
+  },
+  "lowest": {
+    "inflation": "Lowest Inflation",
+    "gdp": "Lowest Growth",
+    "unemployment": "Lowest Unemployment"
+  }
+}

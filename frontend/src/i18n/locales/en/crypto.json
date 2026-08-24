@@ -1,0 +1,16 @@
+{
+  "title": "Crypto Market",
+  "intro": "{{count}} tracked cryptocurrencies — the top 5 daily gainers/losers and the full list ranked by market cap, with real data from Yahoo Finance.",
+  "lastUpdated": "Last updated: {{time}} · refreshes automatically every minute",
+  "topGainers": "🏆 Top Gainers",
+  "topLosers": "📉 Top Losers",
+  "noGainersToday": "No cryptocurrencies are up today.",
+  "noLosersToday": "No cryptocurrencies are down today.",
+  "allByMarketCap": "All Cryptocurrencies by Market Cap",
+  "columnRank": "#",
+  "columnAsset": "Asset",
+  "columnPrice": "Price",
+  "columnMarketCap": "Market Cap",
+  "columnChange24h": "24h Change",
+  "footerNote": "Crypto markets trade 24/7; the change shown here is based on the closing difference over the last ~24 hours. Not investment advice."
+}

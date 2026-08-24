@@ -1,0 +1,68 @@
+{
+  "fxTickerLabel": "FX",
+  "heroRanges": { "all": "All" },
+  "overview": { "title": "Market Overview" },
+  "majorIndices": {
+    "title": "Major Indices",
+    "viewAll": "See all indices →"
+  },
+  "crypto": {
+    "title": "Crypto Market Summary",
+    "totalMarketCap": "Total crypto market cap",
+    "dominanceAria": "Bitcoin dominance {{btc}}%, Ethereum {{eth}}%, others {{others}}%",
+    "other": "Other"
+  },
+  "fxCommodity": {
+    "title": "FX & Commodities"
+  },
+  "macro": {
+    "title": "Macroeconomic Indicator",
+    "label": "Turkey Annual Inflation (CPI)",
+    "source": "Year {{year}}, from the World Bank open data API — the latest published value.",
+    "viewAll": "See all countries →"
+  },
+  "dashboard": {
+    "title": "Market Overview",
+    "subtitle": "A live card view of every asset you track — price, daily change, core risk metrics, and historical performance comparison. Add a new stock with the search bar above.",
+    "addAsset": "Add Asset",
+    "searchPlaceholder": "Search the list (ticker or company name)...",
+    "searchAria": "Search market overview",
+    "sortAria": "Sort",
+    "viewCards": "Cards",
+    "viewTable": "Table",
+    "refreshHint": "Prices refresh automatically every minute",
+    "lastUpdated": "Last updated: {{time}}",
+    "noMatch": "No asset matches \"{{query}}\".",
+    "loading": "Loading market data...",
+    "sortLabels": {
+      "changeDesc": "Change: High → Low",
+      "changeAsc": "Change: Low → High",
+      "name": "Name (A-Z)",
+      "volatility": "Volatility: High → Low"
+    },
+    "pickerAria": "Add asset",
+    "pickerPlaceholder": "Search asset (e.g. AAPL)...",
+    "pickerSearchAria": "Search asset",
+    "pickerEmpty": "No asset found to add",
+    "avgReturn": "Avg. Return",
+    "volatility": "Volatility",
+    "maxDrawdown": "Max. Drawdown",
+    "removeCardAria": "Remove {{ticker}} card",
+    "removeAria": "Remove {{ticker}}",
+    "columnAsset": "Asset",
+    "columnPrice": "Price",
+    "columnDailyChange": "Daily Change",
+    "columnActions": "Actions",
+    "comparisonTitle": "Performance Comparison",
+    "comparisonIntro": "Selected assets' return (%) normalized from the start of the period — side by side on the same chart.",
+    "comparisonAll": "All",
+    "comparisonEmpty": "Select at least one asset to compare."
+  },
+  "news": {
+    "title": "Market News",
+    "timeAgoJustNow": "just now",
+    "timeAgoMinutes": "{{minutes}}m ago",
+    "timeAgoHours": "{{hours}}h ago",
+    "timeAgoDays": "{{days}}d ago"
+  }
+}

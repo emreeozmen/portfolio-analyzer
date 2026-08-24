@@ -1,0 +1,63 @@
+{
+  "historyRanges": { "all": "Tümü" },
+  "hero": {
+    "eyebrow": "BIST + Küresel Piyasalar · Risk & Portföy Analitiği",
+    "title": "Finansal Risk & <accent>Portföy Analiz</accent> Platformu",
+    "lead": "BIST hisseleri için geçmiş fiyat verilerini incele, temel risk ve getiri metriklerini gör, kendi portföyünü oluşturarak performansını analiz et. Üstteki arama kutusuyla dilediğin hisseyi izleme listene ekleyebilirsin.",
+    "marketBtn": "Piyasa Görünümü",
+    "assetsBtn": "Varlık Analizi",
+    "portfolioBtn": "Portföy Analizi",
+    "liveCardLabel": "Canlı Piyasa",
+    "liveCardSource": "Yahoo Finance verisiyle",
+    "liveCardCta": "Piyasa Görünümüne git"
+  },
+  "steps": {
+    "title": "Nasıl Çalışır",
+    "step1Title": "Hisse ara ve ekle",
+    "step1Desc": "Üstteki arama kutusuyla Yahoo Finance'te herhangi bir hisse/ETF'i ara, tek tıkla izleme listene ekle.",
+    "step2Title": "Riski ve performansı incele",
+    "step2Desc": "Her varlık için volatilite, maksimum düşüş, Sharpe oranı ve teknik göstergeleri otomatik hesaplanır.",
+    "step3Title": "Portföy kur, karşılaştır",
+    "step3Desc": "Birden fazla varlığı ağırlıklandırarak portföy oluştur; performansını BIST 100 endeksiyle kıyasla."
+  },
+  "features": {
+    "title": "Platformda Neler Var",
+    "marketTitle": "Piyasa Görünümü",
+    "marketDesc": "Takip ettiğin varlıkları anlık kart veya tablo görünümünde izle; filtrele, sırala, dönem bazlı karşılaştır.",
+    "marketCta": "Piyasaya git",
+    "assetsTitle": "Varlık Analizi",
+    "assetsDesc": "Mum grafiği, SMA/RSI/MACD teknik göstergeleri ve dönemsel performans tablosuyla tek bir hisseyi derinlemesine incele.",
+    "assetsCta": "Analize git",
+    "portfolioTitle": "Portföy Analizi",
+    "portfolioDesc": "Ağırlıklı bir portföy kur; varlık dağılımı, korelasyon matrisi ve BIST 100 kıyasıyla riskini ve getirisini ölç.",
+    "portfolioCta": "Portföy oluştur"
+  },
+  "cta": {
+    "badge": "Hızlı Başlangıç",
+    "title": "Kendi portföyünü şimdi analiz et",
+    "body": "Birkaç dakikada bir portföy kur, riskini ve getirisini gerçek verilerle ölç.",
+    "point1": "Gerçek Yahoo Finance verisi",
+    "point2": "Ücretsiz kayıt, kredi kartı gerekmez",
+    "point3": "Riskini dakikalar içinde ölç",
+    "button": "Portföy Oluştur"
+  },
+  "netWorth": {
+    "title": "Net Değer Özeti",
+    "totalPortfolios": "Toplam Portföy",
+    "totalCost": "Toplam Maliyet",
+    "currentValue": "Güncel Değer",
+    "pl": "Kâr / Zarar",
+    "dividendIncome": "Temettü Geliri",
+    "dividendCalendarLink": "Temettü Takvimi →",
+    "realizedPl": "Gerçekleşmiş K/Z",
+    "mixedCurrencyNote": "Farklı para birimlerinden pozisyonların olduğu portföyler var; toplamlar güncel bir döviz kuruyla TL karşılığına çevrilerek birleştirildi.",
+    "sectorAllocationTitle": "Sektör Dağılımı (Tüm Portföyler)"
+  },
+  "netWorthHistory": {
+    "title": "Net Değer Geçmişi (TL)",
+    "currentValueLine": "Güncel Değer",
+    "costLine": "Maliyet",
+    "caveat": "Bu grafik yalnızca hâlâ açık olan pozisyonları, satın alım tarihinden bugüne izler — tamamen kapatılmış pozisyonlar dahil değildir.",
+    "caveatExcluded": " {{tickers}} için fiyat/kur verisi bulunamadığından hesaba katılmadı."
+  }
+}

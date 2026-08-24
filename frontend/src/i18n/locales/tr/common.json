@@ -1,0 +1,84 @@
+{
+  "skipToContent": "İçeriğe geç",
+  "brand": "Finansal Risk & Portföy Analiz Platformu",
+  "nav": {
+    "home": "Ana Sayfa",
+    "market": "Piyasa Görünümü",
+    "assets": "Varlık Analizi",
+    "portfolio": "Portföy Analizi",
+    "crypto": "Kripto",
+    "inflation": "Enflasyon",
+    "account": "Hesap",
+    "logout": "Çıkış yap",
+    "openMenu": "Menüyü aç",
+    "closeMenu": "Menüyü kapat"
+  },
+  "theme": {
+    "switchToLight": "Açık temaya geç",
+    "switchToDark": "Koyu temaya geç"
+  },
+  "language": {
+    "switchToEnglish": "İngilizceye geç",
+    "switchToTurkish": "Türkçeye geç"
+  },
+  "footer": {
+    "tagline": "BIST ve küresel piyasalar için risk, getiri ve portföy analitiği — tek bir platformda.",
+    "platformHeading": "Platform",
+    "resourcesHeading": "Veri ve Güncelleme",
+    "dataSource": "Fiyat verisi: Yahoo Finance",
+    "updateFrequency": "Fiyatlar ~5 dakikada bir otomatik güncellenir",
+    "liveNote": "Canlı bildirimler WebSocket üzerinden anında iletilir",
+    "disclaimer": "Buradaki veriler ve hesaplamalar bilgilendirme amaçlıdır, yatırım tavsiyesi niteliği taşımaz.",
+    "meta": "Fiyat verisi: Yahoo Finance · © {{year}}"
+  },
+  "notFound": {
+    "title": "Sayfa bulunamadı",
+    "body": "Aradığın sayfa taşınmış ya da hiç var olmamış olabilir.",
+    "backHome": "Ana sayfaya dön"
+  },
+  "errorBoundary": {
+    "title": "Bir şeyler ters gitti",
+    "body": "Sayfa beklenmedik bir hatayla karşılaştı. Bu genelde geçicidir — sayfayı yenilemek çoğu zaman sorunu çözer.",
+    "reload": "Sayfayı Yenile"
+  },
+  "actions": {
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "close": "Kapat",
+    "loading": "Yükleniyor…",
+    "retry": "Tekrar dene"
+  },
+  "notAvailable": "Bilinmiyor",
+  "chart": "Grafik",
+  "notifications": {
+    "ariaWithUnread": "Bildirimler ({{count}} okunmamış)",
+    "aria": "Bildirimler",
+    "empty": "Henüz tetiklenen bir uyarı yok.",
+    "deleteAria": "Uyarıyı sil",
+    "viewAll": "Tüm uyarıları yönet →"
+  },
+  "symbolSearch": {
+    "placeholder": "Sembol veya şirket ara (Ctrl+K)",
+    "aria": "Sembol veya şirket ara",
+    "searching": "Aranıyor...",
+    "noResults": "Sonuç bulunamadı",
+    "tracked": "İzleniyor",
+    "adding": "Ekleniyor...",
+    "add": "Ekle"
+  },
+  "topMovers": {
+    "gainers": "Yükselenler",
+    "losers": "Düşenler",
+    "noGainersToday": "Bugün artıda varlık yok.",
+    "noLosersToday": "Bugün ekside varlık yok."
+  },
+  "watchlist": {
+    "header": "İzleme Listesi",
+    "lastUpdated": "Son güncelleme: {{time}}",
+    "symbol": "Sembol",
+    "last": "Son",
+    "changePercent": "Değ%"
+  }
+}

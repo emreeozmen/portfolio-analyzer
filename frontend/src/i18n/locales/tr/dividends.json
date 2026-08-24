@@ -1,0 +1,13 @@
+{
+  "title": "Temettü Takvimi",
+  "intro": "Portföylerindeki açık pozisyonların bugüne kadar aldığı gerçek temettü ödemeleri — Yahoo Finance'in kendi temettü geçmişinden, en yeniden eskiye. Gelecekteki ödemeler için güvenilir bir veri kaynağı olmadığından bu bir tahmin takvimi değil, gerçekleşmiş ödemelerin listesidir.",
+  "totalIncome": "Toplam Temettü Geliri (TL)",
+  "paymentCount": "Ödeme Sayısı",
+  "fxUnavailable": "{{count}} ödeme için güncel döviz kuru alınamadığından TL toplamına dahil edilmedi.",
+  "empty": "Henüz kayıtlı bir temettü ödemesi yok — pozisyonların ya temettü ödemeyen varlıklardan oluşuyor ya da <link>Portföy Analizi</link> sayfasından pozisyon eklemedin.",
+  "columnDate": "Tarih",
+  "columnAsset": "Varlık",
+  "columnPerShare": "Hisse Başı",
+  "columnQuantity": "Adet",
+  "columnTotal": "Toplam"
+}

@@ -1,0 +1,13 @@
+{
+  "title": "Dividend Calendar",
+  "intro": "Every real dividend payment your open positions have received so far, across all portfolios — from Yahoo Finance's own dividend history, newest first. Since there's no reliable data source for future payments, this is a list of payments that already happened, not a forecast calendar.",
+  "totalIncome": "Total Dividend Income (TRY)",
+  "paymentCount": "Number of Payments",
+  "fxUnavailable": "{{count}} payment(s) couldn't be included in the TRY total since a current exchange rate wasn't available.",
+  "empty": "No dividend payments recorded yet — either your positions are in assets that don't pay dividends, or you haven't added a position yet from the <link>Portfolio Analysis</link> page.",
+  "columnDate": "Date",
+  "columnAsset": "Asset",
+  "columnPerShare": "Per Share",
+  "columnQuantity": "Quantity",
+  "columnTotal": "Total"
+}

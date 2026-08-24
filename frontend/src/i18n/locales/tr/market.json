@@ -1,0 +1,68 @@
+{
+  "fxTickerLabel": "Döviz",
+  "heroRanges": { "all": "Tümü" },
+  "overview": { "title": "Piyasa Özeti" },
+  "majorIndices": {
+    "title": "Majör Endeksler",
+    "viewAll": "Tüm endeksleri gör →"
+  },
+  "crypto": {
+    "title": "Kripto Piyasa Özeti",
+    "totalMarketCap": "Toplam kripto piyasa değeri",
+    "dominanceAria": "Bitcoin dominansı %{{btc}}, Ethereum %{{eth}}, diğerleri %{{others}}",
+    "other": "Diğer"
+  },
+  "fxCommodity": {
+    "title": "Döviz & Emtia"
+  },
+  "macro": {
+    "title": "Makroekonomik Gösterge",
+    "label": "Türkiye Yıllık Enflasyon (TÜFE)",
+    "source": "{{year}} yılı, World Bank açık veri API'sinden — en güncel yayınlanan değer.",
+    "viewAll": "Tüm ülkeleri gör →"
+  },
+  "dashboard": {
+    "title": "Piyasa Görünümü",
+    "subtitle": "Takip ettiğin tüm varlıklar için anlık kart görünümü — fiyat, günlük değişim, temel risk metrikleri ve geçmiş performans karşılaştırması. Üstteki arama kutusuyla yeni bir hisse ekleyebilirsin.",
+    "addAsset": "Varlık Ekle",
+    "searchPlaceholder": "Listede ara (ticker veya şirket adı)...",
+    "searchAria": "Piyasa görünümünde ara",
+    "sortAria": "Sıralama",
+    "viewCards": "Kart",
+    "viewTable": "Tablo",
+    "refreshHint": "Fiyatlar her dakika otomatik yenilenir",
+    "lastUpdated": "Son güncelleme: {{time}}",
+    "noMatch": "\"{{query}}\" ile eşleşen bir varlık bulunamadı.",
+    "loading": "Piyasa verisi yükleniyor...",
+    "sortLabels": {
+      "changeDesc": "Değişim: Yüksek → Düşük",
+      "changeAsc": "Değişim: Düşük → Yüksek",
+      "name": "Ad (A-Z)",
+      "volatility": "Volatilite: Yüksek → Düşük"
+    },
+    "pickerAria": "Varlık ekle",
+    "pickerPlaceholder": "Varlık ara (örn. THYAO)...",
+    "pickerSearchAria": "Varlık ara",
+    "pickerEmpty": "Eklenecek varlık bulunamadı",
+    "avgReturn": "Ort. Getiri",
+    "volatility": "Volatilite",
+    "maxDrawdown": "Maks. Düşüş",
+    "removeCardAria": "{{ticker}} kartını kaldır",
+    "removeAria": "{{ticker}} kaldır",
+    "columnAsset": "Varlık",
+    "columnPrice": "Fiyat",
+    "columnDailyChange": "Günlük Değişim",
+    "columnActions": "İşlemler",
+    "comparisonTitle": "Performans Karşılaştırması",
+    "comparisonIntro": "Seçili varlıkların dönem başına göre normalize edilmiş (%) getirisi — aynı grafikte yan yana.",
+    "comparisonAll": "Tümü",
+    "comparisonEmpty": "Karşılaştırmak için en az bir varlık seçin."
+  },
+  "news": {
+    "title": "Piyasa Haberleri",
+    "timeAgoJustNow": "az önce",
+    "timeAgoMinutes": "{{minutes}} dk önce",
+    "timeAgoHours": "{{hours}} sa önce",
+    "timeAgoDays": "{{days}} gün önce"
+  }
+}

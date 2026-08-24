@@ -1,0 +1,46 @@
+{
+  "title": "Küresel Ekonomik Göstergeler",
+  "dragHint": "Küre kendiliğinden döner — üzerine tıklayıp sürükleyerek de çevirebilirsin.",
+  "loading": "Yükleniyor...",
+  "noData": "Veri yok",
+  "tabs": {
+    "inflation": "Enflasyon",
+    "gdp": "GSYH Büyümesi",
+    "unemployment": "İşsizlik"
+  },
+  "intros": {
+    "inflation": "Ülkelere göre en güncel yıllık TÜFE enflasyon oranı — World Bank açık veri API'sinden. Enflasyon hiçbir kaynakta anlık değildir: istatistik kurumları bu veriyi aylık/yıllık olarak, birkaç aylık gecikmeyle yayınlar; küredeki her ülke kendi son yayınlanmış yılını gösterir.",
+    "gdp": "Ülkelere göre en güncel yıllık GSYH (gayri safi yurt içi hasıla) büyüme oranı — World Bank açık veri API'sinden. Yıllık yayınlanan resmi bir veridir, anlık değildir; küredeki her ülke kendi son yayınlanmış yılını gösterir.",
+    "unemployment": "Ülkelere göre en güncel yıllık işsizlik oranı (işgücüne oranla) — World Bank açık veri API'sinden. Yıllık yayınlanan resmi bir veridir, anlık değildir; küredeki her ülke kendi son yayınlanmış yılını gösterir."
+  },
+  "bandsInflation": {
+    "deflation": "Deflasyon (< %0)",
+    "b0to4": "%0 – %4",
+    "b4to10": "%4 – %10",
+    "b10to25": "%10 – %25",
+    "b25plus": "%25+"
+  },
+  "bandsGdp": {
+    "negative": "Daralma (< %0)",
+    "b0to2": "%0 – %2",
+    "b2to4": "%2 – %4",
+    "b4to7": "%4 – %7",
+    "b7plus": "%7+"
+  },
+  "bandsUnemployment": {
+    "b0to4": "%0 – %4",
+    "b4to7": "%4 – %7",
+    "b7to12": "%7 – %12",
+    "b12plus": "%12+"
+  },
+  "highest": {
+    "inflation": "En Yüksek Enflasyon",
+    "gdp": "En Yüksek Büyüme",
+    "unemployment": "En Yüksek İşsizlik"
+  },
+  "lowest": {
+    "inflation": "En Düşük Enflasyon",
+    "gdp": "En Düşük Büyüme",
+    "unemployment": "En Düşük İşsizlik"
+  }
+}

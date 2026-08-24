@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="BIST ve küresel piyasalar için risk analizi, portföy oluşturma, varlık dağılımı ve performans takibi — gerçek Yahoo Finance verisiyle."
+    />
+    <meta name="theme-color" content="#0a0e14" />
+    <!-- PWA installability on iOS Safari, which ignores the web manifest's own
+         display:"standalone" and only honors this legacy meta tag. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Finansal Risk & Portföy Analiz Platformu</title>
+    <script>
+      // Applied before React mounts (and before index.css paints) so a saved light-theme
+      // preference doesn't flash dark for a frame on load — kept as a tiny inline script
+      // rather than a module import specifically so it runs synchronously, blocking, before
+      // first paint. Mirrors the fallback default in src/lib/ThemeContext.tsx.
+      try {
+        var theme = localStorage.getItem('pa_theme')
+        if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light')
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

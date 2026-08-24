@@ -1,0 +1,33 @@
+{
+  "condition": {
+    "priceAbove": "fiyatı üzerine çıktı",
+    "priceBelow": "fiyatının altına indi",
+    "rsiAbove": "RSI(14) üzerine çıktı",
+    "rsiBelow": "RSI(14) altına indi",
+    "macdBullCross": "MACD yükseliş kesişimi yaptı",
+    "macdBearCross": "MACD düşüş kesişimi yaptı",
+    "volumeSpike": "Hacim, 20 günlük ortalamanın katına çıktı"
+  },
+  "page": {
+    "title": "Uyarılarım",
+    "intro": "Herhangi bir varlık sayfasından kurduğun tüm fiyat/RSI uyarılarını burada tek listede yönetebilirsin.",
+    "emailToggleLabel": "Bir uyarı tetiklendiğinde e-posta ile de bildir",
+    "emailToggleHint": "(Sunucuda e-posta gönderimi ayarlanmadıysa bu tercih uygulama içi bildirimleri etkilemez.)",
+    "statusAll": "Tümü",
+    "statusActive": "Aktif",
+    "statusTriggered": "Tetiklenmiş",
+    "empty": "Henüz bir uyarı kurmadın. Herhangi bir <link>varlık sayfasından</link> fiyat veya RSI uyarısı ekleyebilirsin.",
+    "columnAsset": "Varlık",
+    "columnCondition": "Koşul",
+    "columnStatus": "Durum",
+    "columnCreated": "Oluşturulma",
+    "columnTriggered": "Tetiklenme",
+    "columnActions": "İşlemler",
+    "triggered": "Tetiklendi",
+    "triggeredNew": " · yeni",
+    "active": "Aktif",
+    "markRead": "Okundu işaretle",
+    "delete": "Sil",
+    "noneInFilter": "Bu filtrede gösterilecek uyarı yok."
+  }
+}

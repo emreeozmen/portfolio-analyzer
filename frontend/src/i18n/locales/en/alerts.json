@@ -1,0 +1,33 @@
+{
+  "condition": {
+    "priceAbove": "price rose above",
+    "priceBelow": "price fell below",
+    "rsiAbove": "RSI(14) rose above",
+    "rsiBelow": "RSI(14) fell below",
+    "macdBullCross": "MACD crossed bullish",
+    "macdBearCross": "MACD crossed bearish",
+    "volumeSpike": "Volume spiked to a multiple of the 20-day average"
+  },
+  "page": {
+    "title": "My Alerts",
+    "intro": "Manage every price/RSI alert you've set from any asset page, all in one list here.",
+    "emailToggleLabel": "Also notify me by email when an alert triggers",
+    "emailToggleHint": "(If email sending isn't configured on the server, this preference has no effect on in-app notifications.)",
+    "statusAll": "All",
+    "statusActive": "Active",
+    "statusTriggered": "Triggered",
+    "empty": "You haven't set up any alerts yet. You can add a price or RSI alert from any <link>asset page</link>.",
+    "columnAsset": "Asset",
+    "columnCondition": "Condition",
+    "columnStatus": "Status",
+    "columnCreated": "Created",
+    "columnTriggered": "Triggered",
+    "columnActions": "Actions",
+    "triggered": "Triggered",
+    "triggeredNew": " · new",
+    "active": "Active",
+    "markRead": "Mark as read",
+    "delete": "Delete",
+    "noneInFilter": "No alerts to show in this filter."
+  }
+}

@@ -1,0 +1,26 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+sqlalchemy==2.0.35
+pyodbc==5.1.0
+psycopg2-binary==2.9.9  # optional — only needed when DATABASE_URL points at Postgres (e.g. a Render deployment); MSSQL/pyodbc stays the local-dev default
+pydantic==2.9.2
+pydantic-settings==2.5.2
+python-dotenv==1.0.1
+pandas==2.2.3
+numpy==2.1.1
+scipy==1.14.1
+pytest==8.3.3
+pytest-asyncio==0.24.0
+httpx==0.27.2
+pyjwt==2.9.0
+bcrypt==4.2.0
+email-validator==2.2.0
+yfinance==1.6.0
+requests==2.32.3
+sentry-sdk[fastapi]==2.68.0
+alembic==1.13.3
+pyotp==2.9.0
+qrcode[pil]==8.0
+redis==8.1.0
+fakeredis==2.37.1  # test-only — lets test_ws_redis_relay.py exercise the pub/sub relay without a real Redis server
+pywebpush==2.0.3  # Web Push (VAPID) — see services/push_service.py; pulls in py-vapid + cryptography

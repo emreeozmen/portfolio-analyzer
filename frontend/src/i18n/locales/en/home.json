@@ -1,0 +1,63 @@
+{
+  "historyRanges": { "all": "All" },
+  "hero": {
+    "eyebrow": "BIST + Global Markets · Risk & Portfolio Analytics",
+    "title": "Financial Risk & <accent>Portfolio Analysis</accent> Platform",
+    "lead": "Explore historical price data for BIST stocks, see core risk and return metrics, and build your own portfolio to analyze its performance. Use the search bar above to add any stock to your watchlist.",
+    "marketBtn": "Market Overview",
+    "assetsBtn": "Asset Analysis",
+    "portfolioBtn": "Portfolio Analysis",
+    "liveCardLabel": "Live Market",
+    "liveCardSource": "Powered by Yahoo Finance",
+    "liveCardCta": "Go to Market Overview"
+  },
+  "steps": {
+    "title": "How It Works",
+    "step1Title": "Search and add a stock",
+    "step1Desc": "Search any stock/ETF on Yahoo Finance with the search bar above, and add it to your watchlist with one click.",
+    "step2Title": "Review risk and performance",
+    "step2Desc": "Volatility, maximum drawdown, Sharpe ratio, and technical indicators are computed automatically for every asset.",
+    "step3Title": "Build a portfolio, compare it",
+    "step3Desc": "Build a weighted portfolio out of multiple assets; compare its performance against the BIST 100 index."
+  },
+  "features": {
+    "title": "What's on the Platform",
+    "marketTitle": "Market Overview",
+    "marketDesc": "Watch the assets you track as live cards or a table; filter, sort, and compare across time periods.",
+    "marketCta": "Go to market",
+    "assetsTitle": "Asset Analysis",
+    "assetsDesc": "Dig into a single stock with a candlestick chart, SMA/RSI/MACD technical indicators, and a period-by-period performance table.",
+    "assetsCta": "Go to analysis",
+    "portfolioTitle": "Portfolio Analysis",
+    "portfolioDesc": "Build a weighted portfolio; measure its risk and return with asset allocation, a correlation matrix, and a BIST 100 comparison.",
+    "portfolioCta": "Build a portfolio"
+  },
+  "cta": {
+    "badge": "Quick Start",
+    "title": "Analyze your own portfolio now",
+    "body": "Build a portfolio in a few minutes, and measure its risk and return with real data.",
+    "point1": "Real Yahoo Finance data",
+    "point2": "Free to sign up, no card required",
+    "point3": "Measure your risk in minutes",
+    "button": "Build a Portfolio"
+  },
+  "netWorth": {
+    "title": "Net Worth Summary",
+    "totalPortfolios": "Total Portfolios",
+    "totalCost": "Total Cost",
+    "currentValue": "Current Value",
+    "pl": "Profit / Loss",
+    "dividendIncome": "Dividend Income",
+    "dividendCalendarLink": "Dividend Calendar →",
+    "realizedPl": "Realized P&L",
+    "mixedCurrencyNote": "Some portfolios hold positions in different currencies; totals are combined by converting to TRY at a current exchange rate.",
+    "sectorAllocationTitle": "Sector Allocation (All Portfolios)"
+  },
+  "netWorthHistory": {
+    "title": "Net Worth History (TRY)",
+    "currentValueLine": "Current Value",
+    "costLine": "Cost",
+    "caveat": "This chart only traces positions still open today, from their purchase date onward — fully closed positions are not included.",
+    "caveatExcluded": " {{tickers}} could not be included since no price/exchange-rate data was available."
+  }
+}
