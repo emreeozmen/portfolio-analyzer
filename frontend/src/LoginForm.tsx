@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Mail, Lock, BarChart3, CandlestickChart, PieChart } from 'lucide-react'
+import { Mail, Lock, BarChart3, CandlestickChart, PieChart, TrendingUp, Loader2 } from 'lucide-react'
 import * as api from './api'
 
 interface LoginFormProps {
@@ -18,10 +18,12 @@ function LoginForm({ onAuthenticated }: LoginFormProps) {
   const [error, setError] = useState<string | null>(null)
   const [challengeToken, setChallengeToken] = useState<string | null>(null)
   const [twoFactorCode, setTwoFactorCode] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    setIsSubmitting(true)
     try {
       if (mode === 'register') {
         const { access_token } = await api.register(email, password)
@@ -36,6 +38,8 @@ function LoginForm({ onAuthenticated }: LoginFormProps) {
       if (result.access_token) onAuthenticated(result.access_token)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -43,18 +47,26 @@ function LoginForm({ onAuthenticated }: LoginFormProps) {
     e.preventDefault()
     setError(null)
     if (!challengeToken) return
+    setIsSubmitting(true)
     try {
       const { access_token } = await api.verifyTwoFactor(challengeToken, twoFactorCode)
       onAuthenticated(access_token)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   if (challengeToken) {
     return (
-      <div className="auth-page">
+      <div className="auth-page auth-page-single">
         <div className="panel login-panel">
+          <div className="auth-brand">
+            <span className="auth-brand-badge">
+              <Lock size={20} />
+            </span>
+          </div>
           <h2>{t('login.twoFactorHeading')}</h2>
           <p className="muted">{t('login.twoFactorIntro')}</p>
           {error && <p className="error">{error}</p>}
@@ -72,13 +84,13 @@ function LoginForm({ onAuthenticated }: LoginFormProps) {
                 required
               />
             </label>
-            <button type="submit" className="btn-primary">
-              {t('login.twoFactorVerifyButton')}
+            <button type="submit" className="btn-primary" disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 size={16} className="auth-spinner" /> : t('login.twoFactorVerifyButton')}
             </button>
           </form>
           <button
             type="button"
-            className="btn-ghost"
+            className="btn-ghost auth-switch-link"
             onClick={() => {
               setChallengeToken(null)
               setTwoFactorCode('')
@@ -114,6 +126,11 @@ function LoginForm({ onAuthenticated }: LoginFormProps) {
       </div>
 
       <div className="panel login-panel">
+        <div className="auth-brand">
+          <span className="auth-brand-badge">
+            <TrendingUp size={20} />
+          </span>
+        </div>
         <h2>{mode === 'login' ? t('login.loginHeading') : t('login.registerHeading')}</h2>
 
         {error && <p className="error">{error}</p>}
@@ -149,12 +166,22 @@ function LoginForm({ onAuthenticated }: LoginFormProps) {
               {t('login.passwordHint')}
             </p>
           )}
-          <button type="submit" className="btn-primary">
-            {mode === 'login' ? t('login.loginButton') : t('login.registerButton')}
+          <button type="submit" className="btn-primary" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <Loader2 size={16} className="auth-spinner" />
+            ) : mode === 'login' ? (
+              t('login.loginButton')
+            ) : (
+              t('login.registerButton')
+            )}
           </button>
         </form>
 
-        <button type="button" className="btn-ghost" onClick={() => setMode(mode === 'login' ? 'register' : 'login')}>
+        <button
+          type="button"
+          className="btn-ghost auth-switch-link"
+          onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
+        >
           {mode === 'login' ? t('login.switchToRegister') : t('login.switchToLogin')}
         </button>
       </div>
