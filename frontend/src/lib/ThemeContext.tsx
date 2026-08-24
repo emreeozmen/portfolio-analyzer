@@ -13,17 +13,19 @@ const ThemeContext = createContext<ThemeContextValue | null>(null)
 
 function readInitialTheme(): Theme {
   try {
-    return localStorage.getItem(STORAGE_KEY) === 'light' ? 'light' : 'dark'
+    return localStorage.getItem(STORAGE_KEY) === 'dark' ? 'dark' : 'light'
   } catch {
-    return 'dark'
+    return 'light'
   }
 }
 
-/** App-wide light/dark theme, defaulting to (and preserving) the original dark
- * trading-terminal look — light is an opt-in the user reaches via the topbar toggle,
- * not a `prefers-color-scheme` default. `index.html` applies the saved choice
- * synchronously before first paint to avoid a flash of the wrong theme; this provider
- * keeps `<html data-theme>` and localStorage in sync with React state afterward. */
+/** App-wide light/dark theme, defaulting to light on a first visit — dark (the
+ * original trading-terminal look) is still fully supported and persists once a user
+ * explicitly picks it via the topbar toggle, it's just no longer the unauthenticated
+ * default. Not a `prefers-color-scheme` branch either way. `index.html` applies the
+ * resolved choice synchronously before first paint to avoid a flash of the wrong
+ * theme; this provider keeps `<html data-theme>` and localStorage in sync with React
+ * state afterward. */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(readInitialTheme)
 
