@@ -82,6 +82,7 @@ def _clear_market_data_caches():
     market_data_provider._ohlcv_cache.clear()
     market_data_provider._market_cap_cache.clear()
     market_data_provider._crypto_global_cache = None
+    market_data_provider._crypto_global_last_attempt = 0.0
     market_data_provider._news_cache.clear()
     market_data_provider._fundamentals_cache.clear()
     market_data_provider._recommendations_cache.clear()
@@ -91,6 +92,7 @@ def _clear_market_data_caches():
     market_data_provider._ohlcv_cache.clear()
     market_data_provider._market_cap_cache.clear()
     market_data_provider._crypto_global_cache = None
+    market_data_provider._crypto_global_last_attempt = 0.0
     market_data_provider._news_cache.clear()
     market_data_provider._fundamentals_cache.clear()
     market_data_provider._recommendations_cache.clear()
@@ -236,6 +238,24 @@ def test_get_crypto_global_stats_raises_on_http_error():
     with patch.object(market_data_provider.requests, "get", return_value=mock_resp):
         with pytest.raises(market_data_provider.requests.RequestException):
             market_data_provider.get_crypto_global_stats()
+
+
+def test_get_crypto_global_stats_does_not_retry_immediately_after_a_failure():
+    """A failed attempt (e.g. CoinGecko's free endpoint rate-limiting us with a 429)
+    must not be retried on every subsequent call within the cooldown window — that
+    would hammer an already-rate-limited endpoint every time the broadcast loop ticks
+    (every 60s) instead of backing off, and it would never recover.
+    """
+    mock_resp = MagicMock()
+    mock_resp.raise_for_status.side_effect = market_data_provider.requests.RequestException("rate limited")
+
+    with patch.object(market_data_provider.requests, "get", return_value=mock_resp) as mock_get:
+        with pytest.raises(market_data_provider.requests.RequestException):
+            market_data_provider.get_crypto_global_stats()
+        with pytest.raises(RuntimeError):
+            market_data_provider.get_crypto_global_stats()
+
+    assert mock_get.call_count == 1
 
 
 def _mock_yf_news_entry(

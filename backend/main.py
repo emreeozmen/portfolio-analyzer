@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import random
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -47,16 +46,14 @@ sentry_sdk.init(
 Base.metadata.create_all(bind=engine)
 run_light_migrations()
 
-AUTO_REFRESH_INTERVAL_SECONDS = 30  # keep tracked assets' prices close to real-time; Yahoo Finance itself still
-# isn't a tick-level feed, and this loop fetches every tracked asset sequentially (one real Yahoo Finance HTTP
-# call each) once per tick — as the tracked-asset list grows (see "Dynamic asset universe"), a very short
-# interval risks Yahoo Finance rate-limiting/blocking this server's IP for polling too aggressively. Mitigated
-# two ways below: AUTO_REFRESH_JITTER_SECONDS staggers the per-asset requests within a tick instead of firing
-# them as a synchronized burst, and the per-asset try/except catches any exception (not just the "no data"
-# ValueError), so a transient network/rate-limit error on one asset can't wipe out that tick's refresh for
-# every other asset. If Yahoo Finance rate-limiting is still observed in practice, raise this back toward the
-# original 5 * 60 or move to refreshing a rotating batch of assets per tick rather than all of them.
-AUTO_REFRESH_JITTER_SECONDS = (0.3, 1.0)
+AUTO_REFRESH_INTERVAL_SECONDS = 5 * 60  # keep tracked assets' prices reasonably fresh without hammering Yahoo
+# Finance. A shorter interval was tried and reverted: the frontend's Piyasa Görünümü page does a *full* reload
+# (all displayed tickers' full analysis — price history refetch + metric recomputation) on every "prices-updated"
+# broadcast this loop sends (see asset-market-dashboard.tsx's reloadCards/useLiveSignal), so shortening this
+# interval directly multiplies that page's backend load by the same factor. At 30s (10x more often than 5 min)
+# on Render's free single-worker instance this saturated the one worker handling every other request too,
+# making the whole site feel slow. Don't lower this without also changing the frontend to not do a full
+# reload on every tick (e.g. only reload metrics that actually go stale, or debounce/coalesce the signal).
 # Reference-data (indices/commodities/crypto/news) isn't DB-backed like tracked assets
 # are — it's fetched live from Yahoo/CoinGecko with its own in-process cache (see
 # market_data_provider), so this loop just re-reads that cache on a short interval and
@@ -86,9 +83,7 @@ async def _auto_refresh_loop() -> None:
         try:
             assets_list = asset_service.list_assets(db)
             any_refreshed = False
-            for i, asset in enumerate(assets_list):
-                if i > 0:
-                    await asyncio.sleep(random.uniform(*AUTO_REFRESH_JITTER_SECONDS))
+            for asset in assets_list:
                 try:
                     # Both calls are blocking (yfinance HTTP, DB query) — offloaded to a
                     # worker thread, same reasoning as _market_data_broadcast_loop, so

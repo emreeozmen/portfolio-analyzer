@@ -541,6 +541,13 @@ def get_quote(yahoo_symbol: str) -> dict:
 COINGECKO_GLOBAL_URL = "https://api.coingecko.com/api/v3/global"
 _crypto_global_cache: tuple[float, dict] | None = None
 _CRYPTO_GLOBAL_CACHE_TTL_SECONDS = 300  # CoinGecko's free, key-less endpoint is rate-limited by IP
+_crypto_global_last_attempt = 0.0
+# Without this, a single 429 leaves _crypto_global_cache permanently unset, and every
+# subsequent call (the broadcast loop calls this every 60s) immediately retries CoinGecko
+# instead of respecting the cache TTL — hammering an endpoint that's already rate-limiting
+# us, so it can never recover. This cooldown applies to failed attempts specifically,
+# separately from the success cache above.
+_CRYPTO_GLOBAL_RETRY_COOLDOWN_SECONDS = 300
 
 
 def get_crypto_global_stats() -> dict:
@@ -550,7 +557,7 @@ def get_crypto_global_stats() -> dict:
     shared across every visitor, not fetched per-request. Raises on failure — callers
     degrade gracefully (omit the card) rather than fabricate a figure.
     """
-    global _crypto_global_cache
+    global _crypto_global_cache, _crypto_global_last_attempt
     now = time.time()
     if _crypto_global_cache and now - _crypto_global_cache[0] < _CRYPTO_GLOBAL_CACHE_TTL_SECONDS:
         return _crypto_global_cache[1]
@@ -560,6 +567,10 @@ def get_crypto_global_stats() -> dict:
     if shared is not None:
         _crypto_global_cache = (now, shared)
         return shared
+
+    if now - _crypto_global_last_attempt < _CRYPTO_GLOBAL_RETRY_COOLDOWN_SECONDS:
+        raise RuntimeError("CoinGecko global stats recently failed; waiting out the cooldown before retrying")
+    _crypto_global_last_attempt = now
 
     resp = requests.get(COINGECKO_GLOBAL_URL, timeout=10)
     resp.raise_for_status()
