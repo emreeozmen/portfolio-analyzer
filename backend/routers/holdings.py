@@ -8,9 +8,24 @@ from database import get_db
 from i18n import get_lang, localize
 from models import User
 from routers.auth import get_current_user
-from services import portfolio_service
+from services import portfolio_builder_service, portfolio_service
 
 router = APIRouter(prefix="/holdings", tags=["holdings"])
+
+
+def _verify_portfolio_ownership(db: Session, user_id: int, portfolio_id: int | None) -> None:
+    """A holding's portfolio_id was previously accepted as-is with no ownership check
+    — harmless in practice (every holdings query already filters by user_id first, so
+    another user's portfolio_id could never actually surface someone else's data), but
+    still let a holding end up silently linked to a portfolio_id its owner has no way
+    to see or manage. Raises 404 (matches the plain, un-localized "Portfolio not found"
+    routers/portfolios.py already uses for a portfolio_id that isn't yours or doesn't
+    exist) rather than silently accepting it.
+    """
+    if portfolio_id is None:
+        return
+    if portfolio_builder_service.get_portfolio(db, user_id, portfolio_id) is None:
+        raise HTTPException(status_code=404, detail="Portfolio not found")
 
 
 class HoldingCreate(BaseModel):
@@ -206,6 +221,7 @@ def create_holding(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    _verify_portfolio_ownership(db, current_user.id, payload.portfolio_id)
     return portfolio_service.add_holding(
         db,
         user_id=current_user.id,
@@ -224,6 +240,7 @@ def update_holding(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    _verify_portfolio_ownership(db, current_user.id, payload.portfolio_id)
     updated = portfolio_service.update_holding(
         db,
         user_id=current_user.id,
@@ -257,6 +274,7 @@ def sell_holding(
     current_user: User = Depends(get_current_user),
     lang: str = Depends(get_lang),
 ):
+    _verify_portfolio_ownership(db, current_user.id, payload.portfolio_id)
     try:
         return portfolio_service.sell_holding(
             db,
@@ -326,6 +344,7 @@ def import_holdings(
     current_user: User = Depends(get_current_user),
     lang: str = Depends(get_lang),
 ):
+    _verify_portfolio_ownership(db, current_user.id, payload.portfolio_id)
     try:
         return portfolio_service.import_holdings_csv(
             db, user_id=current_user.id, csv_text=payload.csv_text, portfolio_id=payload.portfolio_id
