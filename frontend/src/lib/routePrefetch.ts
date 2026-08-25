@@ -14,5 +14,11 @@ export const routeImporters: Record<string, () => Promise<unknown>> = {
 }
 
 export function prefetchRoute(path: string): void {
-  routeImporters[path]?.()
+  // Deferred off the mouseenter handler's own call stack — starting the dynamic
+  // import() synchronously there was observed to occasionally swallow the very next
+  // click on the same link (the navigation just never happened, no error thrown).
+  // A macrotask boundary decouples it from click/pointer event handling entirely.
+  setTimeout(() => {
+    routeImporters[path]?.()
+  }, 0)
 }
