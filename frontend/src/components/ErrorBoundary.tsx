@@ -11,6 +11,23 @@ interface ErrorBoundaryState {
   error: Error | null
 }
 
+// A tab left open across a new deploy still has the OLD index.html's chunk manifest in
+// memory — clicking through to a lazy route not yet loaded in this session then requests
+// a chunk file (e.g. AssetScreener-<oldhash>.js) that Vercel's CDN no longer serves,
+// since the new deploy replaced it with a new hash. This is exactly what "the page won't
+// open, refreshing fixes it" looks like from the outside: a plain reload re-fetches the
+// current index.html and its correct (current) chunk manifest. Auto-doing that reload
+// once removes the manual step. The sessionStorage guard stops a reload loop if the
+// error is something else entirely that a reload can't actually fix (e.g. a real outage).
+const STALE_CHUNK_RELOAD_KEY = 'pa_stale_chunk_reload_at'
+const STALE_CHUNK_RELOAD_COOLDOWN_MS = 10_000
+
+function isStaleChunkError(error: Error): boolean {
+  return /fetch dynamically imported module|importing a module script failed|dynamically imported module/i.test(
+    error.message,
+  )
+}
+
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { error: null }
 
@@ -23,6 +40,14 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     // A no-op when VITE_SENTRY_DSN is unset (see main.tsx) — this is the one place a
     // React render-time error is ever seen at all, since it doesn't reach window.onerror.
     Sentry.captureException(error, { extra: { componentStack: info.componentStack } })
+
+    if (isStaleChunkError(error)) {
+      const lastReload = Number(sessionStorage.getItem(STALE_CHUNK_RELOAD_KEY) ?? '0')
+      if (Date.now() - lastReload > STALE_CHUNK_RELOAD_COOLDOWN_MS) {
+        sessionStorage.setItem(STALE_CHUNK_RELOAD_KEY, String(Date.now()))
+        window.location.reload()
+      }
+    }
   }
 
   handleReload = () => {
