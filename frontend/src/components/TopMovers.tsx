@@ -4,10 +4,7 @@ import type { AssetQuote } from '../api'
 import TickerAvatar from './TickerAvatar'
 import Sparkline from './Sparkline'
 import { useFlashOnChange } from '../lib/useFlashOnChange'
-
-function formatChange(v: number): string {
-  return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`
-}
+import { formatSignedPercent as formatChange } from '../lib/currency'
 
 function MoverRow({ quote, onSelect }: { quote: AssetQuote; onSelect: (ticker: string) => void }) {
   const flash = useFlashOnChange(quote.last_price)

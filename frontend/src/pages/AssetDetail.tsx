@@ -24,7 +24,11 @@ import LineChart from '../charts/LineChart'
 import CandlestickChart from '../charts/CandlestickChart'
 import DonutChart from '../charts/DonutChart'
 import { PERFORMANCE_WINDOWS, lastValue, macd, periodReturn, rsi, sma } from '../lib/indicators'
-import { formatMoney } from '../lib/currency'
+import {
+  formatMoney,
+  formatPercentFraction as formatFraction,
+  formatSignedPercent as formatPercentValue,
+} from '../lib/currency'
 import { useLiveChannel, useLiveSignal } from '../lib/useLiveChannel'
 import { useFlashOnChange } from '../lib/useFlashOnChange'
 import { getToken } from '../auth'
@@ -32,14 +36,6 @@ import RiskAlerts, { type RiskAlert } from '../components/RiskAlerts'
 import { useTheme } from '../lib/ThemeContext'
 
 type Tab = 'genel' | 'teknikler' | 'performans' | 'temeller'
-
-function formatFraction(value: number): string {
-  return `${(value * 100).toFixed(2)}%`
-}
-
-function formatPercentValue(value: number): string {
-  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
-}
 
 function formatVolume(v: number): string {
   if (v >= 1e9) return `${(v / 1e9).toFixed(2)}B`

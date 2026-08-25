@@ -4,13 +4,10 @@ import { getTickerStrip, type TickerStripQuote } from '../api'
 import { useLiveChannel } from '../lib/useLiveChannel'
 import { useFlashOnChange } from '../lib/useFlashOnChange'
 import { currentLocale } from '../lib/locale'
+import { formatSignedPercent as formatChange } from '../lib/currency'
 
 function formatValue(value: number): string {
   return value.toLocaleString(currentLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-function formatChange(v: number): string {
-  return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`
 }
 
 function TickerItem({ quote }: { quote: TickerStripQuote }) {

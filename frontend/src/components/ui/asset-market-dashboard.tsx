@@ -16,7 +16,7 @@ import {
   type AssetSummary,
 } from '@/api'
 import { getToken } from '@/auth'
-import { formatMoney } from '@/lib/currency'
+import { formatMoney, formatSignedPercent as formatPercent } from '@/lib/currency'
 import LineChart from '@/charts/LineChart'
 import TickerAvatar from '@/components/TickerAvatar'
 import FxTicker from '@/components/FxTicker'
@@ -40,8 +40,6 @@ interface AssetCardData {
 const ACCENT = '#c9a15f'
 const UP = '#2fbf76'
 const DOWN = '#ec5f66'
-
-const formatPercent = (value: number): string => `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
 
 // Module-level (not component state) so it survives this component unmounting/remounting
 // on every route change — without it, navigating away from Piyasa Görünümü and back re-ran

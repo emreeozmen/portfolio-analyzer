@@ -45,14 +45,11 @@ import { beta, STRESS_SHOCKS } from '../lib/risk'
 import { useTheme } from '../lib/ThemeContext'
 import { useLiveSignal } from '../lib/useLiveChannel'
 import { currentLocale } from '../lib/locale'
+import { formatPercentFraction as formatPercent } from '../lib/currency'
 
 interface AssetRow {
   ticker: string
   weight: string
-}
-
-function formatPercent(value: number): string {
-  return `${(value * 100).toFixed(2)}%`
 }
 
 const EMPTY_ROW: AssetRow = { ticker: '', weight: '' }

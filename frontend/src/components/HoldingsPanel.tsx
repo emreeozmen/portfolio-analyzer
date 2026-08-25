@@ -20,7 +20,7 @@ import {
   type RealizedPLSummary,
   type ValuationSummary,
 } from '../api'
-import { formatMoney } from '../lib/currency'
+import { formatMoney, formatSignedPercent as formatPercent } from '../lib/currency'
 import { currentLocale } from '../lib/locale'
 import { downloadCsv } from '../lib/csv'
 import { useLiveSignal } from '../lib/useLiveChannel'
@@ -46,10 +46,6 @@ interface SellForm {
 
 const EMPTY_FORM: HoldingForm = { ticker: '', quantity: '', purchasePrice: '', purchaseDate: '' }
 const EMPTY_SELL_FORM: SellForm = { quantity: '', salePrice: '', saleDate: '' }
-
-function formatPercent(value: number): string {
-  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
-}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(currentLocale())

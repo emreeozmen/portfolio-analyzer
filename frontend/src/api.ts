@@ -547,13 +547,6 @@ export async function changeEmail(newEmail: string, currentPassword: string): Pr
   return res.json()
 }
 
-export async function getHoldings(portfolioId?: number): Promise<Holding[]> {
-  const qs = portfolioId !== undefined ? `?portfolio_id=${portfolioId}` : ''
-  const res = await fetch(`${API_BASE}/holdings${qs}`, { headers: authHeaders() })
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load holdings: ${res.status}`))
-  return res.json()
-}
-
 export async function getHoldingsValuation(portfolioId?: number): Promise<ValuationResponse> {
   const qs = portfolioId !== undefined ? `?portfolio_id=${portfolioId}` : ''
   return cachedGet(identityKey(`holdingsValuation:${portfolioId ?? 'all'}`), async () => {
@@ -729,13 +722,6 @@ export async function markAllAlertsRead(): Promise<void> {
   const res = await fetch(`${API_BASE}/alerts/read-all`, { method: 'POST', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to mark alerts read: ${res.status}`))
   invalidateCache('alerts')
-}
-
-export async function getVapidPublicKey(): Promise<string> {
-  const res = await fetch(`${API_BASE}/push/vapid-public-key`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load VAPID key: ${res.status}`))
-  const body: { public_key: string } = await res.json()
-  return body.public_key
 }
 
 export interface PushSubscriptionKeys {
