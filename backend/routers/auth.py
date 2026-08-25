@@ -12,10 +12,22 @@ from config import settings
 from database import get_db
 from i18n import get_lang, localize
 from models import User, UserSession
-from services import audit_service, auth_service, rate_limit
+from services import audit_service, auth_service, email_service, rate_limit
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login", auto_error=True)
+
+
+def _send_verification_email(user: User) -> None:
+    """Best-effort — a no-op if SMTP isn't configured (email_service.is_configured()),
+    same graceful-degradation philosophy as every other email in this app. Never
+    raises into the caller; registration/email-change succeed regardless."""
+    if not email_service.is_configured():
+        return
+    token = auth_service.issue_email_verification_token(user)
+    frontend_base = settings.cors_origins_list[0] if settings.cors_origins_list else "http://localhost:5173"
+    verify_url = f"{frontend_base}/dogrula?token={token}"
+    email_service.send_verification_email(user.email, verify_url)
 oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="auth/login", auto_error=False)
 
 PASSWORD_MIN_LENGTH = 8
@@ -74,6 +86,7 @@ class UserResponse(BaseModel):
 
     id: int
     email: EmailStr
+    email_verified: bool
     email_alerts_enabled: bool
     totp_enabled: bool
     base_currency: str
@@ -170,6 +183,7 @@ def register(payload: RegisterRequest, request: Request, db: Session = Depends(g
     if auth_service.get_user_by_email(db, payload.email):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
     user = auth_service.create_user(db, payload.email, payload.password)
+    _send_verification_email(user)
     user_agent, ip_address = _client_info(request)
     return TokenResponse(access_token=auth_service.issue_token_for_user(db, user, user_agent, ip_address))
 
@@ -294,7 +308,38 @@ def change_email(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=localize(str(exc), lang)) from exc
     audit_service.log_action(db, current_user.id, "email.change", payload.new_email)
+    _send_verification_email(user)
     return user
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+@router.post("/verify-email", status_code=status.HTTP_204_NO_CONTENT)
+def verify_email(payload: VerifyEmailRequest, db: Session = Depends(get_db)):
+    try:
+        user_id = auth_service.decode_email_verification_token(payload.token)
+    except (jwt.PyJWTError, ValueError) as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Geçersiz veya süresi dolmuş bağlantı") from exc
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if not user.email_verified:
+        user.email_verified = True
+        db.commit()
+        audit_service.log_action(db, user.id, "email.verify")
+
+
+@router.post(
+    "/resend-verification",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(rate_limit.throttle(3, 300))],
+)
+def resend_verification(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.email_verified:
+        return
+    _send_verification_email(current_user)
 
 
 @router.put("/me/notifications", response_model=UserResponse)

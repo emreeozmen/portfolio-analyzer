@@ -70,6 +70,46 @@ def test_update_email_to_same_email_is_allowed(db_session):
     assert updated.email == "user@example.com"
 
 
+def test_update_email_resets_verified_status(db_session):
+    user = auth_service.create_user(db_session, "old@example.com", "Password1")
+    user.email_verified = True
+    db_session.commit()
+
+    updated = auth_service.update_email(db_session, user, "new@example.com", "Password1")
+
+    assert updated.email_verified is False
+
+
+def test_new_user_is_not_email_verified(db_session):
+    user = auth_service.create_user(db_session, "user@example.com", "Password1")
+
+    assert user.email_verified is False
+
+
+def test_email_verification_token_round_trip(db_session):
+    user = auth_service.create_user(db_session, "user@example.com", "Password1")
+
+    token = auth_service.issue_email_verification_token(user)
+
+    assert auth_service.decode_email_verification_token(token) == user.id
+
+
+def test_decode_email_verification_token_rejects_a_2fa_challenge_token(db_session):
+    user = auth_service.create_user(db_session, "user@example.com", "Password1")
+    challenge = auth_service.issue_2fa_challenge_token(user)
+
+    with pytest.raises(ValueError):
+        auth_service.decode_email_verification_token(challenge)
+
+
+def test_decode_access_token_rejects_an_email_verification_token(db_session):
+    user = auth_service.create_user(db_session, "user@example.com", "Password1")
+    verify_token = auth_service.issue_email_verification_token(user)
+
+    with pytest.raises(ValueError):
+        auth_service.decode_access_token(verify_token)
+
+
 def test_issue_token_for_user_creates_a_revocable_session(db_session):
     user = auth_service.create_user(db_session, "user@example.com", "Password1")
 

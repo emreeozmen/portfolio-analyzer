@@ -9,6 +9,7 @@ import {
   getActivity,
   getCurrentUser,
   getSessions,
+  resendVerificationEmail,
   revokeAllOtherSessions,
   revokeSession,
   setupTwoFactor,
@@ -110,13 +111,14 @@ function PasswordSection() {
   )
 }
 
-function EmailSection({ currentEmail, onEmailChanged }: { currentEmail: string; onEmailChanged: (email: string) => void }) {
+function EmailSection({ user, onUserChanged }: { user: CurrentUser; onUserChanged: (u: CurrentUser) => void }) {
   const { t } = useTranslation('auth')
   const [newEmail, setNewEmail] = useState('')
   const [currentPassword, setCurrentPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [resendState, setResendState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -125,7 +127,7 @@ function EmailSection({ currentEmail, onEmailChanged }: { currentEmail: string; 
     setSubmitting(true)
     try {
       const updated = await changeEmail(newEmail, currentPassword)
-      onEmailChanged(updated.email)
+      onUserChanged(updated)
       setSuccess(true)
       setNewEmail('')
       setCurrentPassword('')
@@ -136,12 +138,48 @@ function EmailSection({ currentEmail, onEmailChanged }: { currentEmail: string; 
     }
   }
 
+  const handleResend = async () => {
+    setResendState('sending')
+    try {
+      await resendVerificationEmail()
+      setResendState('sent')
+    } catch {
+      setResendState('error')
+    }
+  }
+
   return (
     <section className="panel">
       <h2>{t('account.changeEmailTitle')}</h2>
-      <p className="muted" style={{ marginBottom: 18 }}>
-        {t('account.registeredEmail', { email: currentEmail })}
+      <p className="muted" style={{ marginBottom: 8 }}>
+        {t('account.registeredEmail', { email: user.email })}
       </p>
+      {user.email_verified ? (
+        <p className="text-up" style={{ fontSize: 13, marginBottom: 18 }}>
+          ✓ E-posta adresi doğrulanmış
+        </p>
+      ) : (
+        <div style={{ marginBottom: 18 }}>
+          <p className="error" style={{ fontSize: 13, marginBottom: 6 }}>
+            E-posta adresi henüz doğrulanmamış
+          </p>
+          {resendState === 'sent' ? (
+            <p className="text-up" style={{ fontSize: 13 }}>
+              Doğrulama e-postası gönderildi.
+            </p>
+          ) : (
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={handleResend}
+              disabled={resendState === 'sending'}
+            >
+              {resendState === 'sending' ? t('account.saving') : 'Doğrulama e-postasını yeniden gönder'}
+            </button>
+          )}
+          {resendState === 'error' && <p className="error" style={{ fontSize: 13, marginTop: 6 }}>Gönderilemedi, tekrar deneyin.</p>}
+        </div>
+      )}
       {error && <p className="error">{error}</p>}
       {success && <p className="text-up">{t('account.emailUpdated')}</p>}
       <form onSubmit={handleSubmit} className="account-settings-form">
@@ -672,7 +710,7 @@ function AccountSettingsPage() {
       {error && <p className="error">{error}</p>}
       {user && (
         <>
-          <EmailSection currentEmail={user.email} onEmailChanged={(email) => setUser({ ...user, email })} />
+          <EmailSection user={user} onUserChanged={setUser} />
           <PasswordSection />
           <TwoFactorSection user={user} onUserChanged={setUser} />
           <SessionsSection />

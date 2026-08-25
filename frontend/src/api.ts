@@ -403,6 +403,7 @@ export type DigestFrequency = 'off' | 'weekly' | 'monthly'
 export interface CurrentUser {
   id: number
   email: string
+  email_verified: boolean
   email_alerts_enabled: boolean
   totp_enabled: boolean
   base_currency: string
@@ -413,6 +414,20 @@ export async function getCurrentUser(): Promise<CurrentUser> {
   const res = await fetch(`${API_BASE}/auth/me`, { headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load user: ${res.status}`))
   return res.json()
+}
+
+export async function verifyEmail(token: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/auth/verify-email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  })
+  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to verify email: ${res.status}`))
+}
+
+export async function resendVerificationEmail(): Promise<void> {
+  const res = await fetch(`${API_BASE}/auth/resend-verification`, { method: 'POST', headers: authHeaders() })
+  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to resend verification email: ${res.status}`))
 }
 
 export async function updateNotificationPreferences(

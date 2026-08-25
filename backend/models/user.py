@@ -30,3 +30,9 @@ class User(Base):
     # See services/digest_service.py and main.py's _digest_email_loop.
     digest_frequency = Column(String(10), nullable=False, default="off")
     last_digest_sent_at = Column(DateTime, nullable=True)
+    # Whether this email address has actually been confirmed via the link sent to it
+    # at /auth/register (and again at /auth/me/email if the address changes) — see
+    # services/auth_service.issue_email_verification_token. Registration itself is
+    # never gated on this (SMTP is optional/no-op if unconfigured, same philosophy as
+    # email_alerts_enabled above), it's purely a status shown in Hesap Ayarları.
+    email_verified = Column(Boolean, nullable=False, default=False)

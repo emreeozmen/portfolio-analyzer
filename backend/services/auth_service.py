@@ -15,6 +15,7 @@ from models import User, UserSession
 TOTP_ISSUER = "Portfolio Analyzer"
 TWO_FA_CHALLENGE_EXPIRE_MINUTES = 5
 SESSION_TOUCH_INTERVAL = timedelta(minutes=5)
+EMAIL_VERIFICATION_EXPIRE_HOURS = 24
 
 
 def hash_password(password: str) -> str:
@@ -93,6 +94,23 @@ def decode_2fa_challenge_token(token: str) -> int:
     return int(payload["sub"])
 
 
+def issue_email_verification_token(user: User) -> str:
+    """Short-lived, purpose-scoped token proving control of the address at the time it
+    was sent — redeemable once at /auth/verify-email. Not a real access token (no jti,
+    no UserSession row), and registration itself is never gated on this ever being
+    redeemed."""
+    return _encode_token(
+        {"sub": str(user.id), "purpose": "email_verify"}, timedelta(hours=EMAIL_VERIFICATION_EXPIRE_HOURS)
+    )
+
+
+def decode_email_verification_token(token: str) -> int:
+    payload = _decode_token(token)
+    if payload.get("purpose") != "email_verify":
+        raise ValueError("Not an email verification token")
+    return int(payload["sub"])
+
+
 def generate_totp_secret() -> str:
     return pyotp.random_base32()
 
@@ -148,6 +166,7 @@ def update_email(db: Session, user: User, new_email: str, current_password: str)
     if existing is not None and existing.id != user.id:
         raise ValueError("Bu e-posta adresi zaten kullanımda")
     user.email = new_email
+    user.email_verified = False
     db.commit()
     db.refresh(user)
     return user
