@@ -34,6 +34,7 @@
     "lastUpdated": "Last updated: {{time}}",
     "noMatch": "No asset matches \"{{query}}\".",
     "loading": "Loading market data...",
+    "loadError": "Couldn't load market data right now. Please try again shortly.",
     "sortLabels": {
       "changeDesc": "Change: High → Low",
       "changeAsc": "Change: Low → High",

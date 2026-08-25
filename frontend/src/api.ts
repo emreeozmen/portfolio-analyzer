@@ -781,7 +781,12 @@ export async function rewatchAsset(ticker: string): Promise<AssetSummary> {
 
 export async function getAssetAnalysis(ticker: string): Promise<AssetAnalysis> {
   return cachedGet(`assetAnalysis:${ticker}`, async () => {
-    const res = await fetch(`${API_BASE}/assets/${ticker}/analysis`)
+    // Bounded so a single slow/cold-starting backend response can't hang this request
+    // forever — plain fetch() has no default timeout, and pages that request many
+    // tickers at once (Piyasa Görünümü, Varlık Analizi) wait on the slowest one via
+    // Promise.all/allSettled, so one stalled request would otherwise stall the whole
+    // page's loading state indefinitely instead of surfacing an error to retry from.
+    const res = await fetch(`${API_BASE}/assets/${ticker}/analysis`, { signal: AbortSignal.timeout(20_000) })
     if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load analysis: ${res.status}`))
     return res.json()
   })

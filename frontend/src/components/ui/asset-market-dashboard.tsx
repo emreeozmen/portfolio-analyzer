@@ -650,8 +650,16 @@ const AssetMarketDashboard: React.FC = () => {
         return
       }
       setLoading(true)
-      Promise.all(displayedTickers.map((ticker) => getAssetAnalysis(ticker)))
-        .then((analyses) => {
+      // allSettled, not all — a single slow/failing ticker (e.g. mid cold-start) would
+      // otherwise block every other already-successful card from ever appearing, since
+      // Promise.all rejects (and, worse, a hung request with no timeout would never even
+      // settle) as soon as/unless every request does. Cards for whichever tickers
+      // succeeded are shown regardless of the rest.
+      Promise.allSettled(displayedTickers.map((ticker) => getAssetAnalysis(ticker)))
+        .then((results) => {
+          const analyses = results
+            .filter((r): r is PromiseFulfilledResult<AssetAnalysis> => r.status === 'fulfilled')
+            .map((r) => r.value)
           const nextCards = analyses.map(cardFromAnalysis)
           setCards(nextCards)
           setAnalysesByTicker((prev) => {
@@ -659,6 +667,7 @@ const AssetMarketDashboard: React.FC = () => {
             for (const a of analyses) next[a.ticker] = a
             return next
           })
+          setError(analyses.length === 0 && results.length > 0 ? t('dashboard.loadError') : null)
           const now = new Date()
           setLastUpdated(now)
           marketCardsCache = {
@@ -668,10 +677,9 @@ const AssetMarketDashboard: React.FC = () => {
             fetchedAt: now.getTime(),
           }
         })
-        .catch((err) => setError(err instanceof Error ? err.message : String(err)))
         .finally(() => setLoading(false))
     },
-    [displayedTickers],
+    [displayedTickers, t],
   )
 
   useEffect(() => {
