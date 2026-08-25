@@ -326,6 +326,61 @@ function authHeaders(): HeadersInit {
   return headers
 }
 
+// --- Short-TTL response cache ------------------------------------------------------
+// Every page in this app remounts from scratch on navigation (App.tsx's
+// `key={location.pathname}` page-transition wrapper), so without this, revisiting a
+// page seconds after leaving it re-fetched everything from zero every time — and
+// several components independently request the exact same data on the same page
+// (e.g. Home's hero panel and its market overview panel both fetch the BIST 100
+// history and ticker strip). This lets a request already served in the last few
+// seconds be reused instead of re-hitting the network, and lets two callers asking
+// for the same thing at once share one in-flight request instead of firing two.
+// Only wraps read-mostly GET calls where a few seconds of staleness is harmless
+// (reference/market data, or anything also kept fresh via the live WebSocket
+// channels) — never anything that just wrote data, and mutations below invalidate
+// the relevant entries so a write is reflected immediately, not after the TTL.
+const GET_CACHE_TTL_MS = 45_000
+const responseCache = new Map<string, { data: unknown; expiresAt: number }>()
+const inFlightRequests = new Map<string, Promise<unknown>>()
+
+function cachedGet<T>(key: string, fetcher: () => Promise<T>, ttlMs = GET_CACHE_TTL_MS): Promise<T> {
+  const hit = responseCache.get(key)
+  if (hit && hit.expiresAt > Date.now()) return Promise.resolve(hit.data as T)
+
+  const pending = inFlightRequests.get(key)
+  if (pending) return pending as Promise<T>
+
+  const request = fetcher()
+    .then((data) => {
+      responseCache.set(key, { data, expiresAt: Date.now() + ttlMs })
+      return data
+    })
+    .finally(() => inFlightRequests.delete(key))
+  inFlightRequests.set(key, request)
+  return request
+}
+
+// Suffixes a cache key with the current user's identity (or 'anon') for any response
+// that varies per caller (via authHeaders()) — keeps one user's cached list from ever
+// being served to a different user/session, since the module-level cache above
+// outlives a login/logout (which only remounts the React tree, not this module).
+function identityKey(prefix: string): string {
+  return `${prefix}:${getToken() ?? 'anon'}`
+}
+
+function invalidateCache(prefix: string): void {
+  for (const key of responseCache.keys()) {
+    if (key.startsWith(prefix)) responseCache.delete(key)
+  }
+}
+
+/** Test-only escape hatch — the cache above is module-level and otherwise outlives
+ * individual test cases (and their mocked fetch responses) within the same file. */
+export function __clearApiCacheForTests(): void {
+  responseCache.clear()
+  inFlightRequests.clear()
+}
+
 export async function register(email: string, password: string): Promise<TokenResponse> {
   const res = await fetch(`${API_BASE}/auth/register`, {
     method: 'POST',
@@ -671,15 +726,19 @@ export async function deleteHolding(id: number): Promise<void> {
 }
 
 export async function getAssets(): Promise<AssetSummary[]> {
-  const res = await fetch(`${API_BASE}/assets`, { headers: authHeaders() })
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load assets: ${res.status}`))
-  return res.json()
+  return cachedGet(identityKey('assets'), async () => {
+    const res = await fetch(`${API_BASE}/assets`, { headers: authHeaders() })
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load assets: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function getAssetQuotes(): Promise<AssetQuote[]> {
-  const res = await fetch(`${API_BASE}/assets/quotes`, { headers: authHeaders() })
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load quotes: ${res.status}`))
-  return res.json()
+  return cachedGet(identityKey('assetQuotes'), async () => {
+    const res = await fetch(`${API_BASE}/assets/quotes`, { headers: authHeaders() })
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load quotes: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function searchAssets(query: string): Promise<SymbolSearchResult[]> {
@@ -700,24 +759,32 @@ export async function trackAsset(result: SymbolSearchResult): Promise<AssetSumma
     }),
   })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to track asset: ${res.status}`))
+  invalidateCache('assets')
+  invalidateCache('assetQuotes')
   return res.json()
 }
 
 export async function untrackAsset(ticker: string): Promise<void> {
   const res = await fetch(`${API_BASE}/assets/${ticker}/track`, { method: 'DELETE', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to untrack asset: ${res.status}`))
+  invalidateCache('assets')
+  invalidateCache('assetQuotes')
 }
 
 export async function rewatchAsset(ticker: string): Promise<AssetSummary> {
   const res = await fetch(`${API_BASE}/assets/${ticker}/watchlist`, { method: 'POST', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to re-add asset: ${res.status}`))
+  invalidateCache('assets')
+  invalidateCache('assetQuotes')
   return res.json()
 }
 
 export async function getAssetAnalysis(ticker: string): Promise<AssetAnalysis> {
-  const res = await fetch(`${API_BASE}/assets/${ticker}/analysis`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load analysis: ${res.status}`))
-  return res.json()
+  return cachedGet(`assetAnalysis:${ticker}`, async () => {
+    const res = await fetch(`${API_BASE}/assets/${ticker}/analysis`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load analysis: ${res.status}`))
+    return res.json()
+  })
 }
 
 export interface AssetFundamentals {
@@ -786,9 +853,11 @@ export async function getAssetFundamentals(ticker: string): Promise<AssetFundame
 }
 
 export async function getPortfolios(): Promise<Portfolio[]> {
-  const res = await fetch(`${API_BASE}/portfolios`, { headers: authHeaders() })
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load portfolios: ${res.status}`))
-  return res.json()
+  return cachedGet(identityKey('portfolios'), async () => {
+    const res = await fetch(`${API_BASE}/portfolios`, { headers: authHeaders() })
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load portfolios: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function createPortfolio(
@@ -808,6 +877,7 @@ export async function createPortfolio(
     }),
   })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to create portfolio: ${res.status}`))
+  invalidateCache('portfolios')
   return res.json()
 }
 
@@ -903,12 +973,14 @@ export async function updatePortfolio(
     }),
   })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to update portfolio: ${res.status}`))
+  invalidateCache('portfolios')
   return res.json()
 }
 
 export async function deletePortfolio(id: number): Promise<void> {
   const res = await fetch(`${API_BASE}/portfolios/${id}`, { method: 'DELETE', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to delete portfolio: ${res.status}`))
+  invalidateCache('portfolios')
 }
 
 export async function createShareLink(id: number): Promise<string> {
@@ -979,33 +1051,43 @@ export interface CountryInflation {
 }
 
 export async function getFxQuotes(): Promise<FxQuote[]> {
-  const res = await fetch(`${API_BASE}/markets/fx`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load FX quotes: ${res.status}`))
-  return res.json()
+  return cachedGet('fx', async () => {
+    const res = await fetch(`${API_BASE}/markets/fx`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load FX quotes: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function getCryptoQuotes(): Promise<CryptoQuote[]> {
-  const res = await fetch(`${API_BASE}/markets/crypto`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load crypto quotes: ${res.status}`))
-  return res.json()
+  return cachedGet('crypto', async () => {
+    const res = await fetch(`${API_BASE}/markets/crypto`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load crypto quotes: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function getInflationByCountry(): Promise<CountryInflation[]> {
-  const res = await fetch(`${API_BASE}/markets/inflation`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load inflation data: ${res.status}`))
-  return res.json()
+  return cachedGet('inflation', async () => {
+    const res = await fetch(`${API_BASE}/markets/inflation`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load inflation data: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function getGdpGrowthByCountry(): Promise<CountryInflation[]> {
-  const res = await fetch(`${API_BASE}/markets/gdp-growth`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load GDP growth data: ${res.status}`))
-  return res.json()
+  return cachedGet('gdp-growth', async () => {
+    const res = await fetch(`${API_BASE}/markets/gdp-growth`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load GDP growth data: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function getUnemploymentByCountry(): Promise<CountryInflation[]> {
-  const res = await fetch(`${API_BASE}/markets/unemployment`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load unemployment data: ${res.status}`))
-  return res.json()
+  return cachedGet('unemployment', async () => {
+    const res = await fetch(`${API_BASE}/markets/unemployment`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load unemployment data: ${res.status}`))
+    return res.json()
+  })
 }
 
 export interface TickerStripQuote {
@@ -1016,21 +1098,27 @@ export interface TickerStripQuote {
 }
 
 export async function getTickerStrip(): Promise<TickerStripQuote[]> {
-  const res = await fetch(`${API_BASE}/markets/ticker-strip`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load ticker strip: ${res.status}`))
-  return res.json()
+  return cachedGet('ticker-strip', async () => {
+    const res = await fetch(`${API_BASE}/markets/ticker-strip`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load ticker strip: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function getMajorIndices(): Promise<TickerStripQuote[]> {
-  const res = await fetch(`${API_BASE}/markets/indices`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load indices: ${res.status}`))
-  return res.json()
+  return cachedGet('indices', async () => {
+    const res = await fetch(`${API_BASE}/markets/indices`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load indices: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function getCommodities(): Promise<TickerStripQuote[]> {
-  const res = await fetch(`${API_BASE}/markets/commodities`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load commodities: ${res.status}`))
-  return res.json()
+  return cachedGet('commodities', async () => {
+    const res = await fetch(`${API_BASE}/markets/commodities`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load commodities: ${res.status}`))
+    return res.json()
+  })
 }
 
 export interface CryptoGlobalStats {
@@ -1042,9 +1130,11 @@ export interface CryptoGlobalStats {
 }
 
 export async function getCryptoGlobalStats(): Promise<CryptoGlobalStats> {
-  const res = await fetch(`${API_BASE}/markets/crypto/global`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load crypto global stats: ${res.status}`))
-  return res.json()
+  return cachedGet('crypto-global', async () => {
+    const res = await fetch(`${API_BASE}/markets/crypto/global`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load crypto global stats: ${res.status}`))
+    return res.json()
+  })
 }
 
 export interface IndexHistoryPoint {
@@ -1053,9 +1143,11 @@ export interface IndexHistoryPoint {
 }
 
 export async function getBist100History(): Promise<IndexHistoryPoint[]> {
-  const res = await fetch(`${API_BASE}/markets/bist100-history`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load BIST 100 history: ${res.status}`))
-  return res.json()
+  return cachedGet('bist100-history', async () => {
+    const res = await fetch(`${API_BASE}/markets/bist100-history`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load BIST 100 history: ${res.status}`))
+    return res.json()
+  })
 }
 
 export interface NewsItem {
