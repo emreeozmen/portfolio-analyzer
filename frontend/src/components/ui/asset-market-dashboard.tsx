@@ -675,6 +675,12 @@ const AssetMarketDashboard: React.FC = () => {
             fetchedAt: now.getTime(),
           }
         })
+        // Belt-and-suspenders: allSettled itself never rejects, but cardFromAnalysis or
+        // the state updates above still could on a genuinely malformed response. Without
+        // this, that exception was unhandled — cards silently stayed empty/stale with no
+        // error shown, since the setError call above never ran. Caught this exact blank
+        // page live on the deployed site while re-verifying the allSettled change.
+        .catch((err) => setError(err instanceof Error ? err.message : String(err)))
         .finally(() => setLoading(false))
     },
     [displayedTickers, t],
