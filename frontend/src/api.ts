@@ -423,9 +423,11 @@ export interface CurrentUser {
 }
 
 export async function getCurrentUser(): Promise<CurrentUser> {
-  const res = await fetch(`${API_BASE}/auth/me`, { headers: authHeaders() })
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load user: ${res.status}`))
-  return res.json()
+  return cachedGet(identityKey('currentUser'), async () => {
+    const res = await fetch(`${API_BASE}/auth/me`, { headers: authHeaders() })
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load user: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function updateNotificationPreferences(
@@ -438,6 +440,7 @@ export async function updateNotificationPreferences(
     body: JSON.stringify({ email_alerts_enabled: emailAlertsEnabled, digest_frequency: digestFrequency }),
   })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to update notification preferences: ${res.status}`))
+  invalidateCache('currentUser')
   return res.json()
 }
 
@@ -448,6 +451,7 @@ export async function updateCurrency(baseCurrency: string): Promise<CurrentUser>
     body: JSON.stringify({ base_currency: baseCurrency }),
   })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to update currency: ${res.status}`))
+  invalidateCache('currentUser')
   return res.json()
 }
 
@@ -490,19 +494,23 @@ export interface UserSession {
 }
 
 export async function getSessions(): Promise<UserSession[]> {
-  const res = await fetch(`${API_BASE}/auth/sessions`, { headers: authHeaders() })
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load sessions: ${res.status}`))
-  return res.json()
+  return cachedGet(identityKey('sessions'), async () => {
+    const res = await fetch(`${API_BASE}/auth/sessions`, { headers: authHeaders() })
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load sessions: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function revokeSession(id: number): Promise<void> {
   const res = await fetch(`${API_BASE}/auth/sessions/${id}`, { method: 'DELETE', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to revoke session: ${res.status}`))
+  invalidateCache('sessions')
 }
 
 export async function revokeAllOtherSessions(): Promise<void> {
   const res = await fetch(`${API_BASE}/auth/sessions/revoke-all-others`, { method: 'POST', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to revoke other sessions: ${res.status}`))
+  invalidateCache('sessions')
 }
 
 export interface AuditLogEntry {
@@ -513,9 +521,11 @@ export interface AuditLogEntry {
 }
 
 export async function getActivity(): Promise<AuditLogEntry[]> {
-  const res = await fetch(`${API_BASE}/auth/activity`, { headers: authHeaders() })
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load activity: ${res.status}`))
-  return res.json()
+  return cachedGet(identityKey('activity'), async () => {
+    const res = await fetch(`${API_BASE}/auth/activity`, { headers: authHeaders() })
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load activity: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
@@ -564,9 +574,11 @@ export async function getHoldingsValueHistory(portfolioId?: number): Promise<Val
 
 export async function getDividendHistory(portfolioId?: number): Promise<DividendPayment[]> {
   const qs = portfolioId !== undefined ? `?portfolio_id=${portfolioId}` : ''
-  const res = await fetch(`${API_BASE}/holdings/dividends${qs}`, { headers: authHeaders() })
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load dividend history: ${res.status}`))
-  return res.json()
+  return cachedGet(identityKey(`dividendHistory:${portfolioId ?? 'all'}`), async () => {
+    const res = await fetch(`${API_BASE}/holdings/dividends${qs}`, { headers: authHeaders() })
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load dividend history: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function createHolding(input: HoldingInput): Promise<Holding> {
@@ -578,6 +590,7 @@ export async function createHolding(input: HoldingInput): Promise<Holding> {
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to create holding: ${res.status}`))
   invalidateCache('holdingsValuation')
   invalidateCache('holdingsValueHistory')
+  invalidateCache('dividendHistory')
   return res.json()
 }
 
@@ -590,6 +603,7 @@ export async function updateHolding(id: number, input: HoldingInput): Promise<Ho
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to update holding: ${res.status}`))
   invalidateCache('holdingsValuation')
   invalidateCache('holdingsValueHistory')
+  invalidateCache('dividendHistory')
   return res.json()
 }
 
@@ -602,15 +616,20 @@ export async function sellHolding(input: HoldingSaleInput): Promise<HoldingSale>
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to sell holding: ${res.status}`))
   invalidateCache('holdingsValuation')
   invalidateCache('holdingsValueHistory')
+  invalidateCache('dividendHistory')
   invalidateCache('realizedPL')
+  invalidateCache('holdingSales')
+  invalidateCache('taxReport')
   return res.json()
 }
 
 export async function getHoldingSales(portfolioId?: number): Promise<HoldingSale[]> {
   const qs = portfolioId !== undefined ? `?portfolio_id=${portfolioId}` : ''
-  const res = await fetch(`${API_BASE}/holdings/sales${qs}`, { headers: authHeaders() })
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load sales: ${res.status}`))
-  return res.json()
+  return cachedGet(identityKey(`holdingSales:${portfolioId ?? 'all'}`), async () => {
+    const res = await fetch(`${API_BASE}/holdings/sales${qs}`, { headers: authHeaders() })
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load sales: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function getRealizedPLSummary(portfolioId?: number): Promise<RealizedPLSummary> {
@@ -626,6 +645,8 @@ export async function deleteSale(id: number): Promise<void> {
   const res = await fetch(`${API_BASE}/holdings/sales/${id}`, { method: 'DELETE', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to delete sale: ${res.status}`))
   invalidateCache('realizedPL')
+  invalidateCache('holdingSales')
+  invalidateCache('taxReport')
 }
 
 export interface HoldingImportRowError {
@@ -745,6 +766,7 @@ export async function deleteHolding(id: number): Promise<void> {
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to delete holding: ${res.status}`))
   invalidateCache('holdingsValuation')
   invalidateCache('holdingsValueHistory')
+  invalidateCache('dividendHistory')
 }
 
 export async function getAssets(): Promise<AssetSummary[]> {
@@ -874,9 +896,11 @@ export interface AssetFundamentalsResponse {
 }
 
 export async function getAssetFundamentals(ticker: string): Promise<AssetFundamentalsResponse> {
-  const res = await fetch(`${API_BASE}/assets/${ticker}/fundamentals`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load fundamentals: ${res.status}`))
-  return res.json()
+  return cachedGet(`assetFundamentals:${ticker}`, async () => {
+    const res = await fetch(`${API_BASE}/assets/${ticker}/fundamentals`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load fundamentals: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function getPortfolios(): Promise<Portfolio[]> {
@@ -1023,9 +1047,11 @@ export async function deleteShareLink(id: number): Promise<void> {
 }
 
 export async function getPublicPortfolioAnalysis(token: string): Promise<PortfolioAnalysis> {
-  const res = await fetch(`${API_BASE}/public/portfolios/${token}/analysis`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load shared portfolio: ${res.status}`))
-  return res.json()
+  return cachedGet(`publicPortfolio:${token}`, async () => {
+    const res = await fetch(`${API_BASE}/public/portfolios/${token}/analysis`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load shared portfolio: ${res.status}`))
+    return res.json()
+  })
 }
 
 export interface RealizedPLTotals {
@@ -1049,9 +1075,11 @@ export async function getTaxReport(portfolioId?: number, year?: number): Promise
   if (portfolioId !== undefined) params.set('portfolio_id', String(portfolioId))
   if (year !== undefined) params.set('year', String(year))
   const qs = params.toString() ? `?${params.toString()}` : ''
-  const res = await fetch(`${API_BASE}/holdings/sales/tax-report${qs}`, { headers: authHeaders() })
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load tax report: ${res.status}`))
-  return res.json()
+  return cachedGet(identityKey(`taxReport:${portfolioId ?? 'all'}:${year ?? 'all'}`), async () => {
+    const res = await fetch(`${API_BASE}/holdings/sales/tax-report${qs}`, { headers: authHeaders() })
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load tax report: ${res.status}`))
+    return res.json()
+  })
 }
 
 export interface FxQuote {
