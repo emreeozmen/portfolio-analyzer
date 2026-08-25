@@ -546,16 +546,20 @@ export async function getHoldings(portfolioId?: number): Promise<Holding[]> {
 
 export async function getHoldingsValuation(portfolioId?: number): Promise<ValuationResponse> {
   const qs = portfolioId !== undefined ? `?portfolio_id=${portfolioId}` : ''
-  const res = await fetch(`${API_BASE}/holdings/valuation${qs}`, { headers: authHeaders() })
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load valuation: ${res.status}`))
-  return res.json()
+  return cachedGet(identityKey(`holdingsValuation:${portfolioId ?? 'all'}`), async () => {
+    const res = await fetch(`${API_BASE}/holdings/valuation${qs}`, { headers: authHeaders() })
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load valuation: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function getHoldingsValueHistory(portfolioId?: number): Promise<ValueHistoryResponse> {
   const qs = portfolioId !== undefined ? `?portfolio_id=${portfolioId}` : ''
-  const res = await fetch(`${API_BASE}/holdings/value-history${qs}`, { headers: authHeaders() })
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load value history: ${res.status}`))
-  return res.json()
+  return cachedGet(identityKey(`holdingsValueHistory:${portfolioId ?? 'all'}`), async () => {
+    const res = await fetch(`${API_BASE}/holdings/value-history${qs}`, { headers: authHeaders() })
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load value history: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function getDividendHistory(portfolioId?: number): Promise<DividendPayment[]> {
@@ -572,6 +576,8 @@ export async function createHolding(input: HoldingInput): Promise<Holding> {
     body: JSON.stringify(input),
   })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to create holding: ${res.status}`))
+  invalidateCache('holdingsValuation')
+  invalidateCache('holdingsValueHistory')
   return res.json()
 }
 
@@ -582,6 +588,8 @@ export async function updateHolding(id: number, input: HoldingInput): Promise<Ho
     body: JSON.stringify(input),
   })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to update holding: ${res.status}`))
+  invalidateCache('holdingsValuation')
+  invalidateCache('holdingsValueHistory')
   return res.json()
 }
 
@@ -592,6 +600,9 @@ export async function sellHolding(input: HoldingSaleInput): Promise<HoldingSale>
     body: JSON.stringify(input),
   })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to sell holding: ${res.status}`))
+  invalidateCache('holdingsValuation')
+  invalidateCache('holdingsValueHistory')
+  invalidateCache('realizedPL')
   return res.json()
 }
 
@@ -604,14 +615,17 @@ export async function getHoldingSales(portfolioId?: number): Promise<HoldingSale
 
 export async function getRealizedPLSummary(portfolioId?: number): Promise<RealizedPLSummary> {
   const qs = portfolioId !== undefined ? `?portfolio_id=${portfolioId}` : ''
-  const res = await fetch(`${API_BASE}/holdings/sales/summary${qs}`, { headers: authHeaders() })
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load realized P&L: ${res.status}`))
-  return res.json()
+  return cachedGet(identityKey(`realizedPL:${portfolioId ?? 'all'}`), async () => {
+    const res = await fetch(`${API_BASE}/holdings/sales/summary${qs}`, { headers: authHeaders() })
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load realized P&L: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function deleteSale(id: number): Promise<void> {
   const res = await fetch(`${API_BASE}/holdings/sales/${id}`, { method: 'DELETE', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to delete sale: ${res.status}`))
+  invalidateCache('realizedPL')
 }
 
 export interface HoldingImportRowError {
@@ -660,9 +674,11 @@ export async function previewHoldingsImportCsv(
 }
 
 export async function getAlerts(): Promise<PriceAlert[]> {
-  const res = await fetch(`${API_BASE}/alerts`, { headers: authHeaders() })
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load alerts: ${res.status}`))
-  return res.json()
+  return cachedGet(identityKey('alerts'), async () => {
+    const res = await fetch(`${API_BASE}/alerts`, { headers: authHeaders() })
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load alerts: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function createAlert(ticker: string, condition: AlertCondition, threshold: number): Promise<PriceAlert> {
@@ -672,22 +688,26 @@ export async function createAlert(ticker: string, condition: AlertCondition, thr
     body: JSON.stringify({ ticker, condition, threshold }),
   })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to create alert: ${res.status}`))
+  invalidateCache('alerts')
   return res.json()
 }
 
 export async function deleteAlert(id: number): Promise<void> {
   const res = await fetch(`${API_BASE}/alerts/${id}`, { method: 'DELETE', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to delete alert: ${res.status}`))
+  invalidateCache('alerts')
 }
 
 export async function markAlertRead(id: number): Promise<void> {
   const res = await fetch(`${API_BASE}/alerts/${id}/read`, { method: 'POST', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to mark alert read: ${res.status}`))
+  invalidateCache('alerts')
 }
 
 export async function markAllAlertsRead(): Promise<void> {
   const res = await fetch(`${API_BASE}/alerts/read-all`, { method: 'POST', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to mark alerts read: ${res.status}`))
+  invalidateCache('alerts')
 }
 
 export async function getVapidPublicKey(): Promise<string> {
@@ -723,6 +743,8 @@ export async function unsubscribePush(endpoint: string): Promise<void> {
 export async function deleteHolding(id: number): Promise<void> {
   const res = await fetch(`${API_BASE}/holdings/${id}`, { method: 'DELETE', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to delete holding: ${res.status}`))
+  invalidateCache('holdingsValuation')
+  invalidateCache('holdingsValueHistory')
 }
 
 export async function getAssets(): Promise<AssetSummary[]> {
@@ -1167,8 +1189,10 @@ export interface NewsItem {
 }
 
 export async function getMarketNews(): Promise<NewsItem[]> {
-  const res = await fetch(`${API_BASE}/markets/news`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load market news: ${res.status}`))
-  return res.json()
+  return cachedGet('news', async () => {
+    const res = await fetch(`${API_BASE}/markets/news`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load market news: ${res.status}`))
+    return res.json()
+  })
 }
 
