@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getCryptoQuotes, type CryptoQuote } from '../api'
 import TickerAvatar from '../components/TickerAvatar'
@@ -6,14 +6,11 @@ import Skeleton from '../components/Skeleton'
 import { useLiveChannel } from '../lib/useLiveChannel'
 import { useFlashOnChange } from '../lib/useFlashOnChange'
 import { currentLocale } from '../lib/locale'
+import { formatSignedPercent as formatChange } from '../lib/currency'
 
 function formatCryptoPrice(value: number): string {
   const decimals = value >= 1 ? 2 : value >= 0.01 ? 4 : 8
   return `$${value.toLocaleString(currentLocale(), { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`
-}
-
-function formatChange(v: number): string {
-  return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`
 }
 
 function formatMarketCap(value: number | null): string {
@@ -24,7 +21,7 @@ function formatMarketCap(value: number | null): string {
   return `$${value.toLocaleString(currentLocale(), { maximumFractionDigits: 0 })}`
 }
 
-function LeaderboardRow({ rank, quote }: { rank: number; quote: CryptoQuote }) {
+const LeaderboardRow = memo(function LeaderboardRow({ rank, quote }: { rank: number; quote: CryptoQuote }) {
   const flash = useFlashOnChange(quote.last_price)
   const isUp = quote.change_percent >= 0
 
@@ -40,9 +37,9 @@ function LeaderboardRow({ rank, quote }: { rank: number; quote: CryptoQuote }) {
       <span className={`leaderboard-change mono ${isUp ? 'text-up' : 'text-down'}`}>{formatChange(quote.change_percent)}</span>
     </li>
   )
-}
+})
 
-function MarketCapRow({ rank, quote }: { rank: number; quote: CryptoQuote }) {
+const MarketCapRow = memo(function MarketCapRow({ rank, quote }: { rank: number; quote: CryptoQuote }) {
   const flash = useFlashOnChange(quote.last_price)
   const isUp = quote.change_percent >= 0
 
@@ -63,7 +60,7 @@ function MarketCapRow({ rank, quote }: { rank: number; quote: CryptoQuote }) {
       <td className={`mono ${isUp ? 'text-up' : 'text-down'}`}>{formatChange(quote.change_percent)}</td>
     </tr>
   )
-}
+})
 
 function LeaderboardSkeleton() {
   return (

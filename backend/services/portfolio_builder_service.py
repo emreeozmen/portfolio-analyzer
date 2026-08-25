@@ -156,13 +156,15 @@ def compute_portfolio_analysis_payload(db: Session, portfolio: Portfolio) -> dic
     if not portfolio_assets:
         raise ValueError("Portföyde varlık bulunamadı")
 
+    price_rows_by_asset = price_service.get_price_history_for_assets(db, [asset.id for _, asset in portfolio_assets])
+
     price_series_by_ticker = {}
     weights = {}
     risk_free_rate = 0.0
     sector_items: list[tuple[str | None, float]] = []
     currency_items: list[tuple[str | None, float]] = []
     for pa, asset in portfolio_assets:
-        price_rows = price_service.get_price_history(db, asset.id)
+        price_rows = price_rows_by_asset.get(asset.id, [])
         if not price_rows:
             raise ValueError(f"{asset.ticker} için fiyat verisi bulunamadı")
         price_series_by_ticker[asset.ticker] = analysis_service.prices_to_series(price_rows)

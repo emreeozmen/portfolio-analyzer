@@ -61,6 +61,16 @@ def get_asset_by_ticker(db: Session, ticker: str) -> Asset | None:
     return db.query(Asset).filter(Asset.ticker == ticker.upper()).first()
 
 
+def get_assets_by_tickers(db: Session, tickers) -> dict[str, Asset]:
+    """Batch ticker->Asset lookup in a single query, to avoid an N+1 when valuing many
+    holdings (or grouping dividends/value-history by ticker) at once."""
+    upper_tickers = {t.upper() for t in tickers}
+    if not upper_tickers:
+        return {}
+    rows = db.query(Asset).filter(Asset.ticker.in_(upper_tickers)).all()
+    return {a.ticker: a for a in rows}
+
+
 def get_or_create_asset(db: Session, ticker: str, name: str, yahoo_symbol: str, exchange: str | None) -> Asset:
     existing = db.query(Asset).filter(Asset.yahoo_symbol == yahoo_symbol).first()
     if existing:
