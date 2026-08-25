@@ -179,22 +179,15 @@ class NewsItem(BaseModel):
     related_symbol: str
 
 
-def _fetch_fx_quote(entry: tuple[str, str]) -> dict | None:
-    symbol, label = entry
-    try:
-        q = market_data_provider.get_quote(symbol)
-    except ValueError:
-        return None  # one bad symbol shouldn't blank out the whole strip
-    return {"pair": symbol, "label": label, "rate": q["last_price"], "change_percent": q["change_percent"]}
-
-
 def compute_fx_quotes() -> list[dict]:
-    # Same reasoning as compute_crypto_quotes: each entry is its own blocking yfinance
-    # round trip on a cold cache, so a thread pool gets wall time down to roughly the
-    # slowest single request instead of the sum of all of them.
-    with ThreadPoolExecutor(max_workers=min(len(FX_PAIRS), 16) or 1) as pool:
-        results = list(pool.map(_fetch_fx_quote, FX_PAIRS))
-    return [q for q in results if q is not None]
+    quotes = []
+    for symbol, label in FX_PAIRS:
+        try:
+            q = market_data_provider.get_quote(symbol)
+        except ValueError:
+            continue  # one bad symbol shouldn't blank out the whole strip
+        quotes.append({"pair": symbol, "label": label, "rate": q["last_price"], "change_percent": q["change_percent"]})
+    return quotes
 
 
 @router.get("/fx", response_model=list[FxQuote])
@@ -237,21 +230,15 @@ def get_crypto_quotes():
     return compute_crypto_quotes()
 
 
-def _fetch_ticker_quote(entry: tuple[str, str]) -> dict | None:
-    symbol, label = entry
-    try:
-        q = market_data_provider.get_quote(symbol)
-    except ValueError:
-        return None
-    return {"symbol": symbol, "label": label, "value": q["last_price"], "change_percent": q["change_percent"]}
-
-
 def _compute_quotes_for(symbols: list[tuple[str, str]]) -> list[dict]:
-    # Backs the ticker strip / major indices / commodities endpoints, each a handful of
-    # symbols — same cold-cache-latency reasoning as compute_crypto_quotes/compute_fx_quotes.
-    with ThreadPoolExecutor(max_workers=min(len(symbols), 16) or 1) as pool:
-        results = list(pool.map(_fetch_ticker_quote, symbols))
-    return [q for q in results if q is not None]
+    quotes = []
+    for symbol, label in symbols:
+        try:
+            q = market_data_provider.get_quote(symbol)
+        except ValueError:
+            continue
+        quotes.append({"symbol": symbol, "label": label, "value": q["last_price"], "change_percent": q["change_percent"]})
+    return quotes
 
 
 def compute_ticker_strip() -> list[dict]:

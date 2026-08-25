@@ -58,13 +58,11 @@ def build_digest_content(db: Session, user: User, frequency: str) -> list[dict] 
         if not portfolio_assets:
             continue
 
-        price_rows_by_asset = price_service.get_price_history_for_assets(db, [asset.id for _, asset in portfolio_assets])
-
         price_series_by_ticker = {}
         weights = {}
         asset_returns: list[tuple[str, float]] = []
         for pa, asset in portfolio_assets:
-            price_rows = price_rows_by_asset.get(asset.id, [])
+            price_rows = price_service.get_price_history(db, asset.id)
             if not price_rows:
                 continue
             series = analysis_service.prices_to_series(price_rows)

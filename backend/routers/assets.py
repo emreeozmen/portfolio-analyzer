@@ -1,5 +1,3 @@
-import asyncio
-
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
@@ -175,27 +173,17 @@ def get_asset_analysis(ticker: str, db: Session = Depends(get_db)):
 
 
 @router.get("/{ticker}/fundamentals")
-async def get_asset_fundamentals(ticker: str, db: Session = Depends(get_db)):
+def get_asset_fundamentals(ticker: str, db: Session = Depends(get_db)):
     asset = asset_service.get_asset_by_ticker(db, ticker)
     if asset is None:
         raise HTTPException(status_code=404, detail=f"Asset '{ticker}' not found")
 
-    # Each of these is its own Yahoo Finance round trip (6h-cached, so this fires
-    # regularly on a cold cache) — run concurrently instead of stacking 4 sequential
-    # network calls' worth of latency behind the Temeller tab.
-    valuation, recommendations, earnings, holders = await asyncio.gather(
-        asyncio.to_thread(market_data_provider.get_fundamentals, asset.yahoo_symbol),
-        asyncio.to_thread(market_data_provider.get_recommendations_trend, asset.yahoo_symbol),
-        asyncio.to_thread(market_data_provider.get_earnings_calendar, asset.yahoo_symbol),
-        asyncio.to_thread(market_data_provider.get_institutional_holders, asset.yahoo_symbol),
-    )
-
     return {
         "ticker": asset.ticker,
-        "valuation": valuation,
-        "analyst_recommendations": recommendations,
-        "earnings_calendar": earnings,
-        "holders": holders,
+        "valuation": market_data_provider.get_fundamentals(asset.yahoo_symbol),
+        "analyst_recommendations": market_data_provider.get_recommendations_trend(asset.yahoo_symbol),
+        "earnings_calendar": market_data_provider.get_earnings_calendar(asset.yahoo_symbol),
+        "holders": market_data_provider.get_institutional_holders(asset.yahoo_symbol),
     }
 
 

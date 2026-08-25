@@ -1,13 +1,16 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { PortfolioAnalysis } from '../api'
-import { formatPercentFraction as formatPercent } from './currency'
 
 type JsPDFWithAutoTable = jsPDF & { lastAutoTable: { finalY: number } }
 
 const MARGIN_X = 40
 const PAGE_WIDTH = 515 // A4 pt width minus 2*MARGIN_X
 const PRIMARY_RGB: [number, number, number] = [201, 161, 95] // --primary gold, matches the app's palette
+
+function formatPercent(value: number): string {
+  return `${(value * 100).toFixed(2)}%`
+}
 
 export interface PortfolioPdfChartImages {
   /** Chart.js's own chart.toBase64Image() output for the portfolio-index line chart. */

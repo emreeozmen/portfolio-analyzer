@@ -19,12 +19,11 @@ def _load_portfolio_series(db: Session, portfolio: Portfolio) -> tuple[dict, dic
     inline before this was factored out.
     """
     portfolio_assets = portfolio_builder_service.get_portfolio_assets(db, portfolio.id)
-    price_rows_by_asset = price_service.get_price_history_for_assets(db, [asset.id for _, asset in portfolio_assets])
     price_series_by_ticker: dict = {}
     weights: dict = {}
     risk_free_rate = 0.0
     for pa, asset in portfolio_assets:
-        price_rows = price_rows_by_asset.get(asset.id, [])
+        price_rows = price_service.get_price_history(db, asset.id)
         if not price_rows:
             raise HTTPException(status_code=400, detail=f"{asset.ticker} için fiyat verisi bulunamadı")
         price_series_by_ticker[asset.ticker] = analysis_service.prices_to_series(price_rows)

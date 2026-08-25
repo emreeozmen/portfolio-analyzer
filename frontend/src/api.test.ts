@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { __clearApiCacheForTests, getAssets, login } from './api'
+import { getAssets, login } from './api'
 
 function mockFetchOnce(status: number, body: unknown) {
   vi.stubGlobal(
@@ -14,7 +14,6 @@ function mockFetchOnce(status: number, body: unknown) {
 
 afterEach(() => {
   vi.unstubAllGlobals()
-  __clearApiCacheForTests()
 })
 
 describe('parseErrorDetail (via login/getAssets error paths)', () => {

@@ -20,10 +20,13 @@ import {
 import TickerAvatar from './TickerAvatar'
 import LineChart from '../charts/LineChart'
 import { useLiveChannel } from '../lib/useLiveChannel'
-import { formatSignedPercent as formatChange } from '../lib/currency'
 
 const HERO_RANGE_DAYS = [21, 63, 126, 252, Infinity] as const
 const HERO_RANGE_LABELS = ['1A', '3A', '6A', '1Y'] as const
+
+function formatChange(v: number): string {
+  return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`
+}
 
 function formatCompactUsd(value: number): string {
   if (value >= 1e12) return `$${(value / 1e12).toFixed(2)}T`

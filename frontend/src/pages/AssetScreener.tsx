@@ -7,7 +7,7 @@ import TickerAvatar from '../components/TickerAvatar'
 import Skeleton from '../components/Skeleton'
 import Sparkline from '../components/Sparkline'
 import EmptyState from '../components/EmptyState'
-import { formatMoney, formatSignedPercent as formatPercent } from '../lib/currency'
+import { formatMoney } from '../lib/currency'
 import { currentLocale } from '../lib/locale'
 import i18n from '../i18n'
 import { useLiveChannel } from '../lib/useLiveChannel'
@@ -51,6 +51,10 @@ function rowFromAnalysis(analysis: AssetAnalysis): ScreenerRow {
     maxDrawdown: analysis.summary.max_drawdown * 100,
     sparkline: analysis.prices.slice(-20).map((p) => p.close_price),
   }
+}
+
+function formatPercent(v: number): string {
+  return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`
 }
 
 const ScreenerRowView = memo(function ScreenerRowView({
@@ -135,30 +139,20 @@ function AssetScreenerPage() {
 
   const liveQuotes = useLiveChannel<AssetQuote[]>('quotes')
 
-  const load = useCallback(
-    (showSpinner: boolean) => {
-      if (showSpinner) setLoading(true)
-      getAssets()
-        .then((data) => {
-          setAssets(data)
-          // allSettled, not all — a single slow/failing ticker (e.g. mid backend
-          // cold-start) would otherwise block every other already-successful row from
-          // ever appearing, since Promise.all only resolves once every request does.
-          return Promise.allSettled(data.map((a) => getAssetAnalysis(a.ticker)))
-        })
-        .then((results) => {
-          const analyses = results
-            .filter((r): r is PromiseFulfilledResult<AssetAnalysis> => r.status === 'fulfilled')
-            .map((r) => r.value)
-          setRows(analyses.map(rowFromAnalysis))
-          setLastUpdated(new Date())
-          setError(analyses.length === 0 && results.length > 0 ? t('screener.loadError') : null)
-        })
-        .catch((err) => setError(err instanceof Error ? err.message : String(err)))
-        .finally(() => setLoading(false))
-    },
-    [t],
-  )
+  const load = useCallback((showSpinner: boolean) => {
+    if (showSpinner) setLoading(true)
+    getAssets()
+      .then((data) => {
+        setAssets(data)
+        return Promise.all(data.map((a) => getAssetAnalysis(a.ticker)))
+      })
+      .then((analyses) => {
+        setRows(analyses.map(rowFromAnalysis))
+        setLastUpdated(new Date())
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+      .finally(() => setLoading(false))
+  }, [])
 
   useEffect(() => {
     load(true)

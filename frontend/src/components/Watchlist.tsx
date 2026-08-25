@@ -1,7 +1,7 @@
 import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AssetQuote } from '../api'
-import { formatMoney, formatSignedPercent as formatChange } from '../lib/currency'
+import { formatMoney } from '../lib/currency'
 import { currentLocale } from '../lib/locale'
 import TickerAvatar from './TickerAvatar'
 import Sparkline from './Sparkline'
@@ -11,6 +11,10 @@ interface WatchlistProps {
   quotes: AssetQuote[]
   selectedTicker: string
   onSelect: (ticker: string) => void
+}
+
+function formatChange(v: number): string {
+  return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`
 }
 
 const WatchlistRow = memo(function WatchlistRow({

@@ -8,32 +8,19 @@ import Home from './pages/Home'
 import NotFound from './pages/NotFound'
 import { clearToken, getToken, setToken } from './auth'
 import { LiveDataProvider } from './lib/LiveDataContext'
-import { routeImporters } from './lib/routePrefetch'
 import './App.css'
 
 // Code-split the heavier routes (Chart.js, the candlestick canvas, the
 // Tailwind/framer-motion market dashboard) out of the initial bundle — they
-// only need to load once the user actually navigates to that page. The five
-// wired up to a nav link share their import() with routePrefetch.ts, so a hover
-// there can warm the same chunk before the click.
-const AssetScreenerPage = lazy(routeImporters['/assets'] as () => Promise<typeof import('./pages/AssetScreener')>)
+// only need to load once the user actually navigates to that page.
+const AssetScreenerPage = lazy(() => import('./pages/AssetScreener'))
 const AssetDetailPage = lazy(() => import('./pages/AssetDetail'))
 const AssetComparePage = lazy(() => import('./pages/AssetCompare'))
-const PortfolioBuilderPage = lazy(
-  routeImporters['/portfolio'] as () => Promise<typeof import('./pages/PortfolioBuilder')>,
-)
-const MarketDashboardPage = lazy(
-  routeImporters['/market'] as () => Promise<typeof import('./pages/MarketDashboard')>,
-)
-const CryptoLeaderboardPage = lazy(
-  routeImporters['/kripto'] as () => Promise<typeof import('./pages/CryptoLeaderboard')>,
-)
-const InflationMapPage = lazy(
-  routeImporters['/enflasyon'] as () => Promise<typeof import('./pages/InflationMap')>,
-)
-const AccountSettingsPage = lazy(
-  routeImporters['/hesap'] as () => Promise<typeof import('./pages/AccountSettings')>,
-)
+const PortfolioBuilderPage = lazy(() => import('./pages/PortfolioBuilder'))
+const MarketDashboardPage = lazy(() => import('./pages/MarketDashboard'))
+const CryptoLeaderboardPage = lazy(() => import('./pages/CryptoLeaderboard'))
+const InflationMapPage = lazy(() => import('./pages/InflationMap'))
+const AccountSettingsPage = lazy(() => import('./pages/AccountSettings'))
 const AlertsPage = lazy(() => import('./pages/Alerts'))
 const DividendCalendarPage = lazy(() => import('./pages/DividendCalendar'))
 const TaxReportPage = lazy(() => import('./pages/TaxReport'))

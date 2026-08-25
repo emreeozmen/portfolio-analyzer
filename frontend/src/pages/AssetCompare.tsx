@@ -8,7 +8,7 @@ import LineChart from '../charts/LineChart'
 import Skeleton from '../components/Skeleton'
 import PageHeader from '../components/PageHeader'
 import EmptyState from '../components/EmptyState'
-import { formatMoney, formatSignedPercent as formatPercentValue } from '../lib/currency'
+import { formatMoney } from '../lib/currency'
 import { PERFORMANCE_WINDOWS, lastValue, periodReturn, rsi, sma } from '../lib/indicators'
 
 const MAX_COMPARE = 4
@@ -17,11 +17,12 @@ const PALETTE = ['#c9a15f', '#5b9dee', '#2fbf76', '#ec5f66']
 const COMPARE_RANGE_DAYS = [21, 63, 126, 252, Infinity] as const
 const COMPARE_RANGE_LABELS = ['1A', '3A', '6A', '1Y'] as const
 
-// Unlike currency.ts's formatPercentFraction, this keeps the explicit "+" prefix on a
-// non-negative value — the one spot in the app that wants both the fraction scaling and
-// the signed prefix together, so not worth generalizing the shared helper for.
 function formatFraction(value: number): string {
   return `${value >= 0 ? '+' : ''}${(value * 100).toFixed(2)}%`
+}
+
+function formatPercentValue(value: number): string {
+  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
 }
 
 function buildNormalizedSeries(

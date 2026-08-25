@@ -13,7 +13,7 @@ import TopMovers from '../components/TopMovers'
 import ExposureBreakdown from '../components/ExposureBreakdown'
 import Sparkline from '../components/Sparkline'
 import { getToken } from '../auth'
-import { formatMoney, formatSignedPercent as formatPercent } from '../lib/currency'
+import { formatMoney } from '../lib/currency'
 import { currentLocale } from '../lib/locale'
 import { useFlashOnChange } from '../lib/useFlashOnChange'
 import { useCountUp } from '../lib/useCountUp'
@@ -55,6 +55,10 @@ const FEATURE_ICONS: Record<(typeof FEATURE_KEYS)[number], ComponentType<{ size?
   market: BarChart3,
   assets: CandlestickChart,
   portfolio: PieChart,
+}
+
+function formatPercent(value: number): string {
+  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
 }
 
 function HeroLiveRow({ quote, sparkline }: { quote: TickerStripQuote; sparkline?: number[] }) {

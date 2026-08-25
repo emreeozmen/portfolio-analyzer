@@ -4,10 +4,13 @@ import { getFxQuotes, type FxQuote } from '../api'
 import { useLiveChannel } from '../lib/useLiveChannel'
 import { useFlashOnChange } from '../lib/useFlashOnChange'
 import { currentLocale } from '../lib/locale'
-import { formatSignedPercent as formatChange } from '../lib/currency'
 
 function formatRate(value: number): string {
   return value.toLocaleString(currentLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 4 })
+}
+
+function formatChange(value: number): string {
+  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
 }
 
 function FxChip({ quote }: { quote: FxQuote }) {

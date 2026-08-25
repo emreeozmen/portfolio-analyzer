@@ -1,5 +1,5 @@
 import type React from 'react'
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -16,7 +16,7 @@ import {
   type AssetSummary,
 } from '@/api'
 import { getToken } from '@/auth'
-import { formatMoney, formatSignedPercent as formatPercent } from '@/lib/currency'
+import { formatMoney } from '@/lib/currency'
 import LineChart from '@/charts/LineChart'
 import TickerAvatar from '@/components/TickerAvatar'
 import FxTicker from '@/components/FxTicker'
@@ -40,6 +40,8 @@ interface AssetCardData {
 const ACCENT = '#c9a15f'
 const UP = '#2fbf76'
 const DOWN = '#ec5f66'
+
+const formatPercent = (value: number): string => `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
 
 // Module-level (not component state) so it survives this component unmounting/remounting
 // on every route change — without it, navigating away from Piyasa Görünümü and back re-ran
@@ -273,8 +275,7 @@ const AssetPickerModal: React.FC<{
   )
 }
 
-const AssetCard: React.FC<{ asset: AssetCardData; onRemove: (ticker: string) => void; delay?: number }> = memo(
-  ({ asset, onRemove, delay = 0 }) => {
+const AssetCard: React.FC<{ asset: AssetCardData; onRemove: () => void; delay?: number }> = ({ asset, onRemove, delay = 0 }) => {
   const { t } = useTranslation('market')
   const [isActive, setIsActive] = useState(false)
   const isPositive = asset.dailyChangePercent >= 0
@@ -282,10 +283,11 @@ const AssetCard: React.FC<{ asset: AssetCardData; onRemove: (ticker: string) => 
 
   return (
     <motion.div
+      layout
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -20, scale: 0.95 }}
-      transition={{ delay, duration: 0.3, ease: 'easeOut' }}
+      transition={{ delay, type: 'spring', stiffness: 300, damping: 30 }}
       whileHover={{ scale: 1.02 }}
       onMouseEnter={() => setIsActive(true)}
       onMouseLeave={() => setIsActive(false)}
@@ -293,7 +295,7 @@ const AssetCard: React.FC<{ asset: AssetCardData; onRemove: (ticker: string) => 
     >
       <button
         type="button"
-        onClick={() => onRemove(asset.ticker)}
+        onClick={onRemove}
         className="absolute -right-2 -top-2 z-20 flex h-6 w-6 items-center justify-center rounded-full border border-border-strong bg-surface-2 text-text-muted opacity-0 shadow-sm transition-opacity hover:text-danger group-hover:opacity-100"
         aria-label={t('dashboard.removeCardAria', { ticker: asset.ticker })}
       >
@@ -351,11 +353,9 @@ const AssetCard: React.FC<{ asset: AssetCardData; onRemove: (ticker: string) => 
       </ProfessionalCard>
     </motion.div>
   )
-  },
-)
+}
 
-const AssetTableRow: React.FC<{ asset: AssetCardData; onRemove: (ticker: string) => void }> = memo(
-  ({ asset: a, onRemove }) => {
+const AssetTableRow: React.FC<{ asset: AssetCardData; onRemove: () => void }> = ({ asset: a, onRemove }) => {
   const { t } = useTranslation('market')
   const flash = useFlashOnChange(a.currentPrice)
 
@@ -384,7 +384,7 @@ const AssetTableRow: React.FC<{ asset: AssetCardData; onRemove: (ticker: string)
       <td className="px-4 py-3 text-right">
         <button
           type="button"
-          onClick={() => onRemove(a.ticker)}
+          onClick={onRemove}
           className="rounded-md p-1.5 text-text-faint transition-colors hover:bg-surface-3 hover:text-danger"
           aria-label={t('dashboard.removeAria', { ticker: a.ticker })}
         >
@@ -393,8 +393,7 @@ const AssetTableRow: React.FC<{ asset: AssetCardData; onRemove: (ticker: string)
       </td>
     </tr>
   )
-  },
-)
+}
 
 const AssetTable: React.FC<{ assets: AssetCardData[]; onRemove: (ticker: string) => void }> = ({ assets, onRemove }) => {
   const { t } = useTranslation('market')
@@ -416,7 +415,7 @@ const AssetTable: React.FC<{ assets: AssetCardData[]; onRemove: (ticker: string)
         </thead>
         <tbody>
           {assets.map((a) => (
-            <AssetTableRow key={a.ticker} asset={a} onRemove={onRemove} />
+            <AssetTableRow key={a.ticker} asset={a} onRemove={() => onRemove(a.ticker)} />
           ))}
         </tbody>
       </table>
@@ -648,16 +647,8 @@ const AssetMarketDashboard: React.FC = () => {
         return
       }
       setLoading(true)
-      // allSettled, not all — a single slow/failing ticker (e.g. mid cold-start) would
-      // otherwise block every other already-successful card from ever appearing, since
-      // Promise.all rejects (and, worse, a hung request with no timeout would never even
-      // settle) as soon as/unless every request does. Cards for whichever tickers
-      // succeeded are shown regardless of the rest.
-      Promise.allSettled(displayedTickers.map((ticker) => getAssetAnalysis(ticker)))
-        .then((results) => {
-          const analyses = results
-            .filter((r): r is PromiseFulfilledResult<AssetAnalysis> => r.status === 'fulfilled')
-            .map((r) => r.value)
+      Promise.all(displayedTickers.map((ticker) => getAssetAnalysis(ticker)))
+        .then((analyses) => {
           const nextCards = analyses.map(cardFromAnalysis)
           setCards(nextCards)
           setAnalysesByTicker((prev) => {
@@ -665,7 +656,6 @@ const AssetMarketDashboard: React.FC = () => {
             for (const a of analyses) next[a.ticker] = a
             return next
           })
-          setError(analyses.length === 0 && results.length > 0 ? t('dashboard.loadError') : null)
           const now = new Date()
           setLastUpdated(now)
           marketCardsCache = {
@@ -675,15 +665,10 @@ const AssetMarketDashboard: React.FC = () => {
             fetchedAt: now.getTime(),
           }
         })
-        // Belt-and-suspenders: allSettled itself never rejects, but cardFromAnalysis or
-        // the state updates above still could on a genuinely malformed response. Without
-        // this, that exception was unhandled — cards silently stayed empty/stale with no
-        // error shown, since the setError call above never ran. Caught this exact blank
-        // page live on the deployed site while re-verifying the allSettled change.
         .catch((err) => setError(err instanceof Error ? err.message : String(err)))
         .finally(() => setLoading(false))
     },
-    [displayedTickers, t],
+    [displayedTickers],
   )
 
   useEffect(() => {
@@ -906,7 +891,7 @@ const AssetMarketDashboard: React.FC = () => {
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 lg:gap-8">
           <AnimatePresence mode="popLayout">
             {visibleCards.map((asset, index) => (
-              <AssetCard key={asset.ticker} asset={asset} onRemove={handleRemove} delay={index * 0.08} />
+              <AssetCard key={asset.ticker} asset={asset} onRemove={() => handleRemove(asset.ticker)} delay={index * 0.08} />
             ))}
           </AnimatePresence>
         </div>

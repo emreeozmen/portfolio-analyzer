@@ -1,5 +1,4 @@
 import { DONUT_PALETTE } from './DonutChart'
-import { formatPercentFraction as formatPercent } from '../lib/currency'
 
 export interface TreemapRow {
   label: string
@@ -57,6 +56,10 @@ export function layoutTreemap(items: TreemapRow[], x = 0, y = 0, width = 100, he
     ...layoutTreemap(groupA, x, y, width, heightA),
     ...layoutTreemap(groupB, x, y + heightA, width, height - heightA),
   ]
+}
+
+function formatPercent(value: number): string {
+  return `${(value * 100).toFixed(2)}%`
 }
 
 interface TreemapProps {

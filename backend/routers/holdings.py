@@ -174,7 +174,7 @@ def get_holdings_valuation(
     current_user: User = Depends(get_current_user),
 ):
     holdings = portfolio_service.list_holdings(db, current_user.id, portfolio_id)
-    valued = portfolio_service.value_holdings(db, holdings, current_user.base_currency)
+    valued = [portfolio_service.value_holding(db, h, current_user.base_currency) for h in holdings]
     return ValuationResponse(
         holdings=valued,
         summary=portfolio_service.valuation_summary(valued),

@@ -34,7 +34,6 @@
     "lastUpdated": "Son güncelleme: {{time}}",
     "noMatch": "\"{{query}}\" ile eşleşen bir varlık bulunamadı.",
     "loading": "Piyasa verisi yükleniyor...",
-    "loadError": "Piyasa verisi şu anda yüklenemedi. Lütfen birazdan tekrar deneyin.",
     "sortLabels": {
       "changeDesc": "Değişim: Yüksek → Düşük",
       "changeAsc": "Değişim: Düşük → Yüksek",

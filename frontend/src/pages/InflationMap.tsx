@@ -145,23 +145,6 @@ function InflationMapPage() {
     [rotation],
   )
   const path = useMemo(() => geoPath(projection), [projection])
-
-  // Precomputes everything about each country that does NOT depend on the current
-  // rotation (its color, display name, and matched data row) once per data/indicator
-  // change, instead of on every ~25fps auto-rotate tick — the render loop below then
-  // only has to call path(feature) per tick, the one thing that actually needs the
-  // current projection. Without this, numericToAlpha3/byCode.get/colorForValue ran for
-  // all ~180 countries on every single tick even while nothing about the data changed.
-  const countryVisuals = useMemo(
-    () =>
-      countries.map((c) => {
-        const alpha3 = numericToAlpha3(c.id as string)
-        const entry = alpha3 ? byCode.get(alpha3) : undefined
-        const name = (c.properties?.name as string) ?? alpha3 ?? '—'
-        return { feature: c, entry, name, color: colorForValue(entry?.value, bands) }
-      }),
-    [countries, byCode, bands],
-  )
   const spherePath = useMemo(() => path({ type: 'Sphere' }) ?? '', [path])
   const graticulePath = useMemo(() => path(geoGraticule10()) ?? '', [path])
 
@@ -278,21 +261,24 @@ function InflationMapPage() {
                 <path d={spherePath} fill={OCEAN_COLOR} />
                 <path d={graticulePath} fill="none" stroke={GRATICULE_COLOR} strokeWidth={0.6} />
 
-                {countryVisuals.map((cv, i) => {
-                  const d = path(cv.feature)
+                {countries.map((c, i) => {
+                  const alpha3 = numericToAlpha3(c.id as string)
+                  const entry = alpha3 ? byCode.get(alpha3) : undefined
+                  const name = (c.properties?.name as string) ?? alpha3 ?? '—'
+                  const d = path(c)
                   if (!d) return null
                   return (
                     <path
                       // world-atlas' 110m topology has a handful of features sharing
                       // the same (or a missing) numeric id — index disambiguates.
-                      key={`${cv.feature.id ?? 'none'}-${i}`}
+                      key={`${c.id ?? 'none'}-${i}`}
                       d={d}
-                      fill={cv.color}
+                      fill={colorForValue(entry?.value, bands)}
                       stroke="rgba(10,14,20,0.55)"
                       strokeWidth={0.5}
                       onMouseEnter={(evt) => {
                         hoveredRef.current = true
-                        setTooltip({ x: evt.clientX, y: evt.clientY, name: cv.entry?.country_name ?? cv.name, entry: cv.entry })
+                        setTooltip({ x: evt.clientX, y: evt.clientY, name: entry?.country_name ?? name, entry })
                       }}
                       onMouseLeave={() => {
                         hoveredRef.current = false

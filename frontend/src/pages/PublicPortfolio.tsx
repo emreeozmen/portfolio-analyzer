@@ -7,7 +7,10 @@ import Card from '../components/Card'
 import PageHeader from '../components/PageHeader'
 import LineChart from '../charts/LineChart'
 import DonutChart, { DONUT_PALETTE } from '../charts/DonutChart'
-import { formatPercentFraction as formatPercent } from '../lib/currency'
+
+function formatPercent(value: number): string {
+  return `${(value * 100).toFixed(2)}%`
+}
 
 function PublicPortfolioPage() {
   const { t } = useTranslation('portfolio')

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Trans, useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
@@ -24,11 +24,7 @@ import LineChart from '../charts/LineChart'
 import CandlestickChart from '../charts/CandlestickChart'
 import DonutChart from '../charts/DonutChart'
 import { PERFORMANCE_WINDOWS, lastValue, macd, periodReturn, rsi, sma } from '../lib/indicators'
-import {
-  formatMoney,
-  formatPercentFraction as formatFraction,
-  formatSignedPercent as formatPercentValue,
-} from '../lib/currency'
+import { formatMoney } from '../lib/currency'
 import { useLiveChannel, useLiveSignal } from '../lib/useLiveChannel'
 import { useFlashOnChange } from '../lib/useFlashOnChange'
 import { getToken } from '../auth'
@@ -36,6 +32,14 @@ import RiskAlerts, { type RiskAlert } from '../components/RiskAlerts'
 import { useTheme } from '../lib/ThemeContext'
 
 type Tab = 'genel' | 'teknikler' | 'performans' | 'temeller'
+
+function formatFraction(value: number): string {
+  return `${(value * 100).toFixed(2)}%`
+}
+
+function formatPercentValue(value: number): string {
+  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
+}
 
 function formatVolume(v: number): string {
   if (v >= 1e9) return `${(v / 1e9).toFixed(2)}B`
@@ -642,26 +646,6 @@ function AssetDetailPage() {
 
   const recentPrices = analysis ? analysis.prices.slice().reverse().slice(0, 30) : []
 
-  // Memoized: analysis only changes on a real fetch (ticker change or the
-  // prices-updated live signal), so without this every unrelated re-render (an SMA
-  // checkbox toggle, the watchlist's live quotes updating) built a fresh array
-  // reference and forced CandlestickChart's own useMemo-keyed SMA/clip recompute plus a
-  // full canvas repaint.
-  const candlestickData = useMemo(
-    () =>
-      analysis
-        ? analysis.prices.map((p) => ({
-            date: p.date,
-            open: p.open_price,
-            high: p.high_price,
-            low: p.low_price,
-            close: p.close_price,
-            volume: p.volume,
-          }))
-        : [],
-    [analysis],
-  )
-
   return (
     <div>
       <p className="breadcrumb">
@@ -786,7 +770,14 @@ function AssetDetailPage() {
                       name={analysis.name}
                       currency={analysis.currency}
                       smaOverlays={smaOverlays}
-                      data={candlestickData}
+                      data={analysis.prices.map((p) => ({
+                        date: p.date,
+                        open: p.open_price,
+                        high: p.high_price,
+                        low: p.low_price,
+                        close: p.close_price,
+                        volume: p.volume,
+                      }))}
                     />
                   </section>
 

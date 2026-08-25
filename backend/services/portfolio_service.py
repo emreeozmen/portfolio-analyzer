@@ -97,49 +97,16 @@ def _dividend_yield_ttm(dividends: list[tuple[date, float]], current_price: floa
 
 
 def value_holding(db: Session, holding: Holding, aggregate_currency: str = AGGREGATE_CURRENCY) -> dict:
-    """Attaches a live valuation to a single holding — see value_holdings() for the
-    batched version used when valuing many holdings at once (e.g. the "Pozisyonlar"
-    panel), which this now delegates to so both paths share one implementation.
-    """
-    return value_holdings(db, [holding], aggregate_currency)[0]
-
-
-def value_holdings(
-    db: Session, holdings: list[Holding], aggregate_currency: str = AGGREGATE_CURRENCY
-) -> list[dict]:
     """Attaches a live valuation (current price, market value, unrealized P&L, dividend
-    income) to each holding by looking up its ticker's latest close price and real
-    dividend history. Falls back to null valuation fields if the ticker isn't tracked or
-    has no price history yet, rather than failing the whole request. `aggregate_currency`
+    income) to a holding by looking up its ticker's latest close price and real dividend
+    history. Falls back to null valuation fields if the ticker isn't tracked or has no
+    price history yet, rather than failing the whole request. `aggregate_currency`
     defaults to the platform-wide TRY assumption but is normally the caller's own
     User.base_currency (see routers/holdings.py) — the `_try`-suffixed field names
     below are kept as-is (not renamed) to avoid an unrelated churn migration; they now
     mean "in aggregate_currency", which just happens to still be TRY by default.
-
-    Batches the Asset and latest-price lookups into one query each across every
-    distinct ticker, instead of one query per holding — this backs GET
-    /holdings/valuation, which is re-fetched on every "prices-updated" WebSocket
-    signal, so an N+1 here scales directly with how many positions a user has open.
     """
-    if not holdings:
-        return []
-
-    tickers = {h.ticker for h in holdings}
-    assets_by_ticker = asset_service.get_assets_by_tickers(db, tickers)
-    latest_prices = price_service.get_latest_prices(db, [a.id for a in assets_by_ticker.values()])
-
-    return [
-        _value_holding_with(holding, assets_by_ticker.get(holding.ticker), latest_prices, aggregate_currency)
-        for holding in holdings
-    ]
-
-
-def _value_holding_with(
-    holding: Holding,
-    asset,
-    latest_prices: dict[int, "price_service.PriceHistory"],
-    aggregate_currency: str,
-) -> dict:
+    asset = asset_service.get_asset_by_ticker(db, holding.ticker)
     current_price = None
     currency = "TRY"
     sector = None
@@ -148,9 +115,9 @@ def _value_holding_with(
     if asset is not None:
         currency = asset.currency
         sector = asset.sector
-        price_row = latest_prices.get(asset.id)
-        if price_row is not None:
-            current_price = price_row.close_price
+        price_rows = price_service.get_price_history(db, asset.id)
+        if price_rows:
+            current_price = price_rows[-1].close_price
 
         dividends = market_data_provider.get_dividends(asset.yahoo_symbol)
         purchase_date = holding.purchase_date.date()
@@ -209,11 +176,9 @@ def dividend_history(
     for h in holdings:
         by_ticker.setdefault(h.ticker, []).append(h)
 
-    assets_by_ticker = asset_service.get_assets_by_tickers(db, by_ticker.keys())
-
     rows: list[dict] = []
     for ticker, lots in by_ticker.items():
-        asset = assets_by_ticker.get(ticker)
+        asset = asset_service.get_asset_by_ticker(db, ticker)
         if asset is None:
             continue
         dividends = market_data_provider.get_dividends(asset.yahoo_symbol)
@@ -333,12 +298,10 @@ def holdings_value_history(
     currency_by_ticker: dict[str, str] = {}
     excluded_tickers: set[str] = set()
 
-    assets_by_ticker = asset_service.get_assets_by_tickers(db, {h.ticker for h in holdings})
-
     for h in holdings:
         if h.ticker in price_series_by_ticker or h.ticker in excluded_tickers:
             continue
-        asset = assets_by_ticker.get(h.ticker)
+        asset = asset_service.get_asset_by_ticker(db, h.ticker)
         if asset is None:
             excluded_tickers.add(h.ticker)
             continue
