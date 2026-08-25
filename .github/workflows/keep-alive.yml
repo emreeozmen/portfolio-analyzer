@@ -16,4 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping backend health endpoint
-        run: curl -fsS --max-time 20 https://portfolio-analyzer-backend-fys1.onrender.com/health
+        # max-time comfortably covers a real cold start (observed ~70s) — a run that
+        # gives up too early reports failure even though the ping still woke the
+        # instance up, which makes the workflow's own status misleading.
+        run: curl -fsS --max-time 100 https://portfolio-analyzer-backend-fys1.onrender.com/health
