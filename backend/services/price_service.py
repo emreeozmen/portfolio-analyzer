@@ -20,6 +20,27 @@ def get_price_history(db: Session, asset_id: int) -> list[PriceHistory]:
     )
 
 
+def get_price_history_for_assets(db: Session, asset_ids: list[int]) -> dict[int, list[PriceHistory]]:
+    """Full ordered price history for multiple assets in a single query — avoids one
+    query per constituent when loading a whole portfolio's price series at once (see
+    portfolio_builder_service.compute_portfolio_analysis_payload, routers/portfolios.py's
+    _load_portfolio_series, and digest_service.build_digest_content, which all used to
+    loop get_price_history() once per asset)."""
+    unique_ids = list({aid for aid in asset_ids})
+    if not unique_ids:
+        return {}
+    rows = (
+        db.query(PriceHistory)
+        .filter(PriceHistory.asset_id.in_(unique_ids))
+        .order_by(PriceHistory.asset_id, PriceHistory.date)
+        .all()
+    )
+    grouped: dict[int, list[PriceHistory]] = {aid: [] for aid in unique_ids}
+    for row in rows:
+        grouped[row.asset_id].append(row)
+    return grouped
+
+
 def get_latest_prices(db: Session, asset_ids: list[int]) -> dict[int, PriceHistory]:
     """Latest PriceHistory row per asset_id, in a single query — avoids one query per
     asset when pricing many holdings at once (see portfolio_service.value_holdings)."""

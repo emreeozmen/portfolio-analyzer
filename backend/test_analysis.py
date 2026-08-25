@@ -16,7 +16,6 @@ from analysis.portfolio_metrics import (
     max_drawdown,
     monte_carlo_simulation,
     optimize_portfolio_weights,
-    portfolio_allocation,
     portfolio_expected_return_and_volatility,
     return_kurtosis,
     return_skewness,
@@ -54,13 +53,6 @@ def test_annualized_volatility_nonnegative():
 def test_sharpe_ratio_zero_std_returns_zero():
     returns = pd.Series([0.0, 0.0, 0.0])
     assert sharpe_ratio(returns) == 0.0
-
-
-def test_portfolio_allocation_sums_to_one():
-    allocation = portfolio_allocation({"AAPL": 6000, "MSFT": 4000})
-    assert allocation["AAPL"] == 0.6
-    assert allocation["MSFT"] == 0.4
-    assert sum(allocation.values()) == 1.0
 
 
 def _synthetic_returns_df(n_days: int = 500, seed: int = 0) -> pd.DataFrame:

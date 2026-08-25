@@ -103,23 +103,6 @@ def max_drawdown(prices: pd.Series) -> float:
     return float(drawdown.min())
 
 
-def portfolio_allocation(holdings: dict[str, float]) -> dict[str, float]:
-    total_value = sum(holdings.values())
-    if total_value == 0:
-        return {ticker: 0.0 for ticker in holdings}
-    return {ticker: value / total_value for ticker, value in holdings.items()}
-
-
-def summarize_portfolio(prices: pd.Series, risk_free_rate: float = 0.0) -> dict[str, float]:
-    returns = daily_returns(prices)
-    return {
-        "total_return": total_return(prices),
-        "annualized_volatility": annualized_volatility(returns),
-        "sharpe_ratio": sharpe_ratio(returns, risk_free_rate),
-        "max_drawdown": max_drawdown(prices),
-    }
-
-
 def optimize_portfolio_weights(
     returns_df: pd.DataFrame, risk_free_rate: float = 0.0, objective: str = "max_sharpe"
 ) -> dict[str, float]:
