@@ -80,6 +80,19 @@ def test_update_email_resets_verified_status(db_session):
     assert updated.email_verified is False
 
 
+def test_update_email_to_the_same_address_does_not_reset_verified_status(db_session):
+    # Resubmitting the same email (a plain "save" with nothing edited, or a
+    # double-submit) must not reset verification — this is what used to fire a fresh
+    # verification email on every resubmit, unthrottled, and spammed a real inbox.
+    user = auth_service.create_user(db_session, "user@example.com", "Password1")
+    user.email_verified = True
+    db_session.commit()
+
+    updated = auth_service.update_email(db_session, user, "user@example.com", "Password1")
+
+    assert updated.email_verified is True
+
+
 def test_new_user_is_not_email_verified(db_session):
     user = auth_service.create_user(db_session, "user@example.com", "Password1")
 

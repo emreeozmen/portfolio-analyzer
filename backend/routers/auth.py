@@ -296,19 +296,27 @@ def change_password(
     audit_service.log_action(db, current_user.id, "password.change")
 
 
-@router.put("/me/email", response_model=UserResponse)
+@router.put(
+    "/me/email", response_model=UserResponse, dependencies=[Depends(rate_limit.throttle(5, 300))]
+)
 def change_email(
     payload: UpdateEmailRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     lang: str = Depends(get_lang),
 ):
+    email_actually_changing = payload.new_email != current_user.email
     try:
         user = auth_service.update_email(db, current_user, payload.new_email, payload.current_password)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=localize(str(exc), lang)) from exc
     audit_service.log_action(db, current_user.id, "email.change", payload.new_email)
-    _send_verification_email(user)
+    # Only when the address genuinely changed — resubmitting the same email (a plain
+    # "save" with nothing edited, or a double-click) must never fire another
+    # verification email. This plus the throttle above is what actually stops a
+    # repeat-submit from spamming an inbox; see update_email's own matching guard.
+    if email_actually_changing:
+        _send_verification_email(user)
     return user
 
 
@@ -316,7 +324,11 @@ class VerifyEmailRequest(BaseModel):
     token: str
 
 
-@router.post("/verify-email", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/verify-email",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(rate_limit.throttle(20, 300))],
+)
 def verify_email(payload: VerifyEmailRequest, db: Session = Depends(get_db)):
     try:
         user_id = auth_service.decode_email_verification_token(payload.token)

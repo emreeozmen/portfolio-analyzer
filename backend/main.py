@@ -46,6 +46,26 @@ sentry_sdk.init(
 Base.metadata.create_all(bind=engine)
 run_light_migrations()
 
+# Not a hard failure — an existing deployment with a weak-but-already-in-use secret
+# would have every issued token invalidated by rotating it out from under itself, a
+# worse outcome than a loud log line. This is purely so a JWT_SECRET_KEY left at the
+# repo's own dev default (or anything under HS256's 32-byte-minimum recommendation —
+# see the InsecureKeyLengthWarning pyjwt itself already raises for this) is visible
+# in logs instead of a silent weakness. Render's own blueprint (render.yaml) already
+# sets generateValue: true, which produces a long random secret — this only ever
+# fires for a deployment that overrode that or is running outside Render entirely.
+if settings.jwt_secret_key == "dev-only-secret-change-me":
+    logger.warning(
+        "JWT_SECRET_KEY is still the repository's default dev value — set a real "
+        "secret (e.g. `python -c \"import secrets; print(secrets.token_hex(32))\"`) "
+        "for any deployment other than local development."
+    )
+elif len(settings.jwt_secret_key.encode()) < 32:
+    logger.warning(
+        "JWT_SECRET_KEY is under 32 bytes, below HS256's recommended minimum "
+        "(RFC 7518 §3.2) — consider rotating to a longer secret."
+    )
+
 AUTO_REFRESH_INTERVAL_SECONDS = 5 * 60  # keep tracked assets' prices reasonably fresh without hammering Yahoo
 # Finance. A shorter interval was tried and reverted: the frontend's Piyasa Görünümü page does a *full* reload
 # (all displayed tickers' full analysis — price history refetch + metric recomputation) on every "prices-updated"
@@ -256,6 +276,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    """A JSON API has a smaller header-based attack surface than an HTML app, but
+    these are cheap, standard, and never break a legitimate fetch()/XHR client —
+    Cloudflare (this deployment's edge, confirmed via its own response headers) adds
+    none of these on its own. HSTS is intentionally left to Cloudflare/Vercel, which
+    already set it at the edge for every request regardless of what the origin says.
+    """
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
 
 @app.exception_handler(RequestValidationError)
 async def localized_validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:

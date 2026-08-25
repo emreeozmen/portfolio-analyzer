@@ -60,7 +60,9 @@ def get_asset_quotes(db: Session = Depends(get_db), current_user: User | None = 
     return price_service.get_latest_quotes(db, asset_service.list_visible_assets(db, current_user))
 
 
-@router.get("/search", response_model=list[SymbolSearchResult])
+@router.get(
+    "/search", response_model=list[SymbolSearchResult], dependencies=[Depends(rate_limit.throttle(30, 60))]
+)
 def search_assets(
     q: str, db: Session = Depends(get_db), current_user: User | None = Depends(get_current_user_optional)
 ):

@@ -165,8 +165,15 @@ def update_email(db: Session, user: User, new_email: str, current_password: str)
     existing = get_user_by_email(db, new_email)
     if existing is not None and existing.id != user.id:
         raise ValueError("Bu e-posta adresi zaten kullanımda")
+    # Only actually reset verification (and, at the router layer, only then re-send a
+    # verification email) when the address is genuinely changing — resubmitting the
+    # same email (the form's own "save" with nothing edited, or a double-click/retry)
+    # used to unconditionally reset email_verified and fire a fresh email every time,
+    # which is exactly what spammed a real account's inbox with repeat "verify your
+    # email" sends before this was caught.
+    if new_email != user.email:
+        user.email_verified = False
     user.email = new_email
-    user.email_verified = False
     db.commit()
     db.refresh(user)
     return user
