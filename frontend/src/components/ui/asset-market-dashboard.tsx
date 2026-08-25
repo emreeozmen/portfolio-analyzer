@@ -43,6 +43,26 @@ const DOWN = '#ec5f66'
 
 const formatPercent = (value: number): string => `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
 
+// Module-level (not component state) so it survives this component unmounting/remounting
+// on every route change — without it, navigating away from Piyasa Görünümü and back re-ran
+// a full analysis fetch (price history + metrics) for every displayed asset from scratch,
+// which is exactly what made page-to-page navigation feel slow. Cleared implicitly on a
+// real page reload (new JS module instance), so it can never show data older than this
+// browser tab's current session.
+let marketCardsCache: {
+  tickers: string[]
+  cards: AssetCardData[]
+  analyses: Record<string, AssetAnalysis>
+  fetchedAt: number
+} | null = null
+// Matches the backend's own AUTO_REFRESH_INTERVAL_SECONDS (main.py) — no point treating the
+// cache as stale sooner than the backend could possibly have written newer data anyway.
+const MARKET_CARDS_CACHE_FRESH_MS = 5 * 60 * 1000
+
+function sameTickerSet(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((ticker, i) => ticker === b[i])
+}
+
 function cardFromAnalysis(analysis: AssetAnalysis): AssetCardData {
   const recentPrices = analysis.prices.slice(-30)
   const lastPoint = analysis.prices[analysis.prices.length - 1]
@@ -582,16 +602,20 @@ function sortCards(cards: AssetCardData[], sortKey: SortKey): AssetCardData[] {
 const AssetMarketDashboard: React.FC = () => {
   const { t } = useTranslation('market')
   const [allAssets, setAllAssets] = useState<AssetSummary[]>([])
-  const [cards, setCards] = useState<AssetCardData[]>([])
-  const [analysesByTicker, setAnalysesByTicker] = useState<Record<string, AssetAnalysis>>({})
+  const [cards, setCards] = useState<AssetCardData[]>(marketCardsCache?.cards ?? [])
+  const [analysesByTicker, setAnalysesByTicker] = useState<Record<string, AssetAnalysis>>(
+    marketCardsCache?.analyses ?? {},
+  )
   const [displayedTickers, setDisplayedTickers] = useState<string[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(marketCardsCache === null)
   const [error, setError] = useState<string | null>(null)
   const [isPickerOpen, setIsPickerOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('change-desc')
   const [viewMode, setViewMode] = useState<ViewMode>('cards')
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(
+    marketCardsCache ? new Date(marketCardsCache.fetchedAt) : null,
+  )
 
   useEffect(() => {
     getAssets()
@@ -602,26 +626,50 @@ const AssetMarketDashboard: React.FC = () => {
       .catch((err) => setError(err instanceof Error ? err.message : String(err)))
   }, [])
 
-  const reloadCards = useCallback(() => {
-    if (displayedTickers.length === 0) {
-      setCards([])
-      setLoading(false)
-      return
-    }
-    setLoading(true)
-    Promise.all(displayedTickers.map((ticker) => getAssetAnalysis(ticker)))
-      .then((analyses) => {
-        setCards(analyses.map(cardFromAnalysis))
-        setAnalysesByTicker((prev) => {
-          const next = { ...prev }
-          for (const a of analyses) next[a.ticker] = a
-          return next
+  const reloadCards = useCallback(
+    (opts?: { force?: boolean }) => {
+      if (displayedTickers.length === 0) {
+        setCards([])
+        setLoading(false)
+        return
+      }
+      // Skip the network round-trip entirely if we already have fresh data for this exact
+      // ticker set — e.g. the user navigated away from Piyasa Görünümü and back within the
+      // same session. Without this, every mount re-fetched every asset's full analysis
+      // (price history + metrics) from scratch, which is what made page-to-page navigation
+      // feel slow. A "prices-updated" broadcast passes force:true to bypass this.
+      if (
+        !opts?.force &&
+        marketCardsCache &&
+        sameTickerSet(marketCardsCache.tickers, displayedTickers) &&
+        Date.now() - marketCardsCache.fetchedAt < MARKET_CARDS_CACHE_FRESH_MS
+      ) {
+        return
+      }
+      setLoading(true)
+      Promise.all(displayedTickers.map((ticker) => getAssetAnalysis(ticker)))
+        .then((analyses) => {
+          const nextCards = analyses.map(cardFromAnalysis)
+          setCards(nextCards)
+          setAnalysesByTicker((prev) => {
+            const next = { ...prev }
+            for (const a of analyses) next[a.ticker] = a
+            return next
+          })
+          const now = new Date()
+          setLastUpdated(now)
+          marketCardsCache = {
+            tickers: displayedTickers,
+            cards: nextCards,
+            analyses: Object.fromEntries(analyses.map((a) => [a.ticker, a])),
+            fetchedAt: now.getTime(),
+          }
         })
-        setLastUpdated(new Date())
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : String(err)))
-      .finally(() => setLoading(false))
-  }, [displayedTickers])
+        .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+        .finally(() => setLoading(false))
+    },
+    [displayedTickers],
+  )
 
   useEffect(() => {
     reloadCards()
@@ -630,8 +678,9 @@ const AssetMarketDashboard: React.FC = () => {
 
   // Full reload (sparkline + all metrics) only when the backend actually wrote new
   // price data (~5 min), not a blind 60s poll — live price/change in between comes
-  // from the cheaper "quotes" channel merge below.
-  useLiveSignal('prices-updated', reloadCards)
+  // from the cheaper "quotes" channel merge below. Forced regardless of the cache above,
+  // since this signal specifically means the cached data is now stale.
+  useLiveSignal('prices-updated', () => reloadCards({ force: true }))
 
   const liveQuotes = useLiveChannel<AssetQuote[]>('quotes')
   useEffect(() => {
