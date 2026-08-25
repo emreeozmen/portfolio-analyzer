@@ -28,6 +28,30 @@ function isStaleChunkError(error: Error): boolean {
   )
 }
 
+// A plain reload() is still served by whichever service worker already controls this
+// tab — the PWA's own cached app shell — so it does NOT by itself fetch the new deploy's
+// index.html/chunk manifest; the reload can reproduce the exact same stale-chunk error
+// forever. Telling the registration to check for an update and waiting for the resulting
+// new worker to actually take over (the 'controllerchange' event) before reloading is
+// what actually gets fresh content. Falls straight to a plain reload if there's no
+// service worker at all, or if no new one shows up within a few seconds (e.g. this tab's
+// worker genuinely was already current, and the error has some other cause).
+function reloadPastServiceWorker(): void {
+  if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
+    window.location.reload()
+    return
+  }
+  let done = false
+  const reloadOnce = () => {
+    if (done) return
+    done = true
+    window.location.reload()
+  }
+  navigator.serviceWorker.addEventListener('controllerchange', reloadOnce, { once: true })
+  navigator.serviceWorker.getRegistration().then((reg) => reg?.update()).catch(reloadOnce)
+  setTimeout(reloadOnce, 4000)
+}
+
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { error: null }
 
@@ -45,7 +69,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       const lastReload = Number(sessionStorage.getItem(STALE_CHUNK_RELOAD_KEY) ?? '0')
       if (Date.now() - lastReload > STALE_CHUNK_RELOAD_COOLDOWN_MS) {
         sessionStorage.setItem(STALE_CHUNK_RELOAD_KEY, String(Date.now()))
-        window.location.reload()
+        reloadPastServiceWorker()
       }
     }
   }
