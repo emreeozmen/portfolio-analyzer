@@ -9,6 +9,7 @@ from i18n import get_lang, localize
 from models import User
 from routers.auth import get_current_user, get_current_user_optional
 from services import alert_service, analysis_service, asset_service, market_data_provider, price_service, rate_limit
+from services.http_cache import cache_control
 
 router = APIRouter(prefix="/assets", tags=["assets"])
 
@@ -152,7 +153,7 @@ def untrack_asset(
         raise HTTPException(status_code=404, detail=f"'{asset.ticker}' izleme listende değil")
 
 
-@router.get("/{ticker}/analysis")
+@router.get("/{ticker}/analysis", dependencies=[Depends(cache_control(60))])
 def get_asset_analysis(ticker: str, db: Session = Depends(get_db)):
     asset = asset_service.get_asset_by_ticker(db, ticker)
     if asset is None:
@@ -174,7 +175,7 @@ def get_asset_analysis(ticker: str, db: Session = Depends(get_db)):
     }
 
 
-@router.get("/{ticker}/fundamentals")
+@router.get("/{ticker}/fundamentals", dependencies=[Depends(cache_control(21600))])
 async def get_asset_fundamentals(ticker: str, db: Session = Depends(get_db)):
     # to_thread even for this DB lookup, not just the Yahoo Finance calls below — a
     # plain synchronous db.query() call here would otherwise block the whole event

@@ -7,10 +7,11 @@ plus a live/cached quote.
 
 from concurrent.futures import ThreadPoolExecutor
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from services import market_data_provider, worldbank_service
+from services.http_cache import cache_control
 
 router = APIRouter(prefix="/markets", tags=["markets"])
 
@@ -197,7 +198,7 @@ def compute_fx_quotes() -> list[dict]:
     return [q for q in results if q is not None]
 
 
-@router.get("/fx", response_model=list[FxQuote])
+@router.get("/fx", response_model=list[FxQuote], dependencies=[Depends(cache_control(900))])
 def get_fx_quotes():
     return compute_fx_quotes()
 
@@ -232,7 +233,7 @@ def compute_crypto_quotes() -> list[dict]:
     return quotes
 
 
-@router.get("/crypto", response_model=list[CryptoQuote])
+@router.get("/crypto", response_model=list[CryptoQuote], dependencies=[Depends(cache_control(900))])
 def get_crypto_quotes():
     return compute_crypto_quotes()
 
@@ -258,7 +259,7 @@ def compute_ticker_strip() -> list[dict]:
     return _compute_quotes_for(TICKER_STRIP_SYMBOLS)
 
 
-@router.get("/ticker-strip", response_model=list[TickerStripQuote])
+@router.get("/ticker-strip", response_model=list[TickerStripQuote], dependencies=[Depends(cache_control(900))])
 def get_ticker_strip():
     return compute_ticker_strip()
 
@@ -267,7 +268,7 @@ def compute_major_indices() -> list[dict]:
     return _compute_quotes_for(MAJOR_INDICES_SYMBOLS)
 
 
-@router.get("/indices", response_model=list[TickerStripQuote])
+@router.get("/indices", response_model=list[TickerStripQuote], dependencies=[Depends(cache_control(900))])
 def get_major_indices():
     return compute_major_indices()
 
@@ -276,12 +277,12 @@ def compute_commodities() -> list[dict]:
     return _compute_quotes_for(COMMODITY_SYMBOLS)
 
 
-@router.get("/commodities", response_model=list[TickerStripQuote])
+@router.get("/commodities", response_model=list[TickerStripQuote], dependencies=[Depends(cache_control(900))])
 def get_commodities():
     return compute_commodities()
 
 
-@router.get("/crypto/global", response_model=CryptoGlobalStats)
+@router.get("/crypto/global", response_model=CryptoGlobalStats, dependencies=[Depends(cache_control(300))])
 def get_crypto_global():
     try:
         stats = market_data_provider.get_crypto_global_stats()
@@ -290,7 +291,7 @@ def get_crypto_global():
     return CryptoGlobalStats(**stats)
 
 
-@router.get("/bist100-history", response_model=list[IndexHistoryPoint])
+@router.get("/bist100-history", response_model=list[IndexHistoryPoint], dependencies=[Depends(cache_control(900))])
 def get_bist100_history():
     """A year of BIST 100 daily closes for the homepage's hero chart — shares the
     same cache entry portfolios' benchmark overlay already uses, so this doesn't
@@ -328,12 +329,12 @@ def compute_market_news() -> list[dict]:
     return merged[:12]
 
 
-@router.get("/news", response_model=list[NewsItem])
+@router.get("/news", response_model=list[NewsItem], dependencies=[Depends(cache_control(900))])
 def get_market_news():
     return compute_market_news()
 
 
-@router.get("/inflation", response_model=list[CountryIndicatorValue])
+@router.get("/inflation", response_model=list[CountryIndicatorValue], dependencies=[Depends(cache_control(86400))])
 def get_inflation():
     try:
         rows = worldbank_service.get_inflation_by_country()
@@ -345,7 +346,7 @@ def get_inflation():
     ]
 
 
-@router.get("/gdp-growth", response_model=list[CountryIndicatorValue])
+@router.get("/gdp-growth", response_model=list[CountryIndicatorValue], dependencies=[Depends(cache_control(86400))])
 def get_gdp_growth():
     try:
         rows = worldbank_service.get_gdp_growth_by_country()
@@ -357,7 +358,7 @@ def get_gdp_growth():
     ]
 
 
-@router.get("/unemployment", response_model=list[CountryIndicatorValue])
+@router.get("/unemployment", response_model=list[CountryIndicatorValue], dependencies=[Depends(cache_control(86400))])
 def get_unemployment():
     try:
         rows = worldbank_service.get_unemployment_by_country()
