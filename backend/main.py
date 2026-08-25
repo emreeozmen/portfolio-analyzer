@@ -81,7 +81,7 @@ async def _auto_refresh_loop() -> None:
         await asyncio.sleep(AUTO_REFRESH_INTERVAL_SECONDS)
         db = SessionLocal()
         try:
-            assets_list = asset_service.list_assets(db)
+            assets_list = await asyncio.to_thread(asset_service.list_assets, db)
             any_refreshed = False
             for asset in assets_list:
                 try:
@@ -106,7 +106,7 @@ async def _auto_refresh_loop() -> None:
                         # Email is a best-effort addition on top of the WebSocket push
                         # above, not a replacement — the alert already landed in-app
                         # regardless of whether SMTP is configured or this send fails.
-                        alert_user = db.get(User, alert.user_id)
+                        alert_user = await asyncio.to_thread(db.get, User, alert.user_id)
                         if alert_user and alert_user.email_alerts_enabled:
                             await asyncio.to_thread(
                                 email_service.send_alert_triggered_email,
@@ -209,7 +209,8 @@ async def _digest_email_loop() -> None:
         db = SessionLocal()
         try:
             for frequency, label in digest_service.FREQUENCY_LABELS.items():
-                for user in digest_service.users_due_for_digest(db, frequency):
+                due_users = await asyncio.to_thread(digest_service.users_due_for_digest, db, frequency)
+                for user in due_users:
                     try:
                         content = await asyncio.to_thread(digest_service.build_digest_content, db, user, frequency)
                         if content is None:
@@ -219,7 +220,7 @@ async def _digest_email_loop() -> None:
                         )
                         if sent:
                             user.last_digest_sent_at = datetime.now(timezone.utc)
-                            db.commit()
+                            await asyncio.to_thread(db.commit)
                     except Exception as exc:
                         logger.warning("digest email failed for user %s: %s", user.id, exc)
                         sentry_sdk.capture_exception(exc)

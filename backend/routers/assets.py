@@ -176,7 +176,12 @@ def get_asset_analysis(ticker: str, db: Session = Depends(get_db)):
 
 @router.get("/{ticker}/fundamentals")
 async def get_asset_fundamentals(ticker: str, db: Session = Depends(get_db)):
-    asset = asset_service.get_asset_by_ticker(db, ticker)
+    # to_thread even for this DB lookup, not just the Yahoo Finance calls below — a
+    # plain synchronous db.query() call here would otherwise block the whole event
+    # loop (every other concurrent request/WebSocket connection this worker is
+    # serving) for its round-trip, the exact thing this module's other async work
+    # already goes out of its way to avoid.
+    asset = await asyncio.to_thread(asset_service.get_asset_by_ticker, db, ticker)
     if asset is None:
         raise HTTPException(status_code=404, detail=f"Asset '{ticker}' not found")
 

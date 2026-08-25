@@ -6,6 +6,7 @@ authenticated, and from then on receives {"channel": ..., "data": ...} pushes fr
 background loops in main.py — no per-client polling loop on either side.
 """
 
+import asyncio
 import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -38,7 +39,10 @@ def _resolve_user_id(token: str | None) -> int | None:
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, token: str | None = None):
-    user_id = _resolve_user_id(token)
+    # to_thread — _resolve_user_id does a synchronous DB lookup (session revocation
+    # check), which would otherwise block the whole event loop, and thus every other
+    # concurrent request/WebSocket this worker is serving, on every new connection.
+    user_id = await asyncio.to_thread(_resolve_user_id, token)
     await ws_manager.manager.connect(websocket, user_id)
     try:
         while True:
