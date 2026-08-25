@@ -42,13 +42,7 @@
     "reload": "Sayfayı Yenile"
   },
   "actions": {
-    "save": "Kaydet",
-    "cancel": "İptal",
-    "delete": "Sil",
-    "edit": "Düzenle",
-    "close": "Kapat",
-    "loading": "Yükleniyor…",
-    "retry": "Tekrar dene"
+    "loading": "Yükleniyor…"
   },
   "notAvailable": "Bilinmiyor",
   "chart": "Grafik",

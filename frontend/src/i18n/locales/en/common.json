@@ -42,13 +42,7 @@
     "reload": "Reload page"
   },
   "actions": {
-    "save": "Save",
-    "cancel": "Cancel",
-    "delete": "Delete",
-    "edit": "Edit",
-    "close": "Close",
-    "loading": "Loading…",
-    "retry": "Retry"
+    "loading": "Loading…"
   },
   "notAvailable": "Unknown",
   "chart": "Chart",
