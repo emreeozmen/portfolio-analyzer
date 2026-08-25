@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import * as Sentry from '@sentry/react'
+import { Analytics } from '@vercel/analytics/react'
 import './index.css'
 import './i18n'
 import App from './App.tsx'
@@ -22,6 +23,10 @@ createRoot(document.getElementById('root')!).render(
     <ThemeProvider>
       <LanguageProvider>
         <App />
+        {/* No-ops unless the deployment is actually served from Vercel and Web
+            Analytics is enabled in the project's dashboard (Settings > Analytics) —
+            safe to always render. */}
+        <Analytics />
       </LanguageProvider>
     </ThemeProvider>
   </StrictMode>,

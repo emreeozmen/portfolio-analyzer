@@ -505,6 +505,21 @@ export async function getActivity(): Promise<AuditLogEntry[]> {
   return res.json()
 }
 
+export interface AdminUser {
+  id: number
+  email: string
+  created_at: string
+  last_seen_at: string | null
+}
+
+// 403s for every account except the one configured as ADMIN_EMAIL on the backend —
+// see routers/auth.py's _require_admin.
+export async function getAdminUsers(): Promise<AdminUser[]> {
+  const res = await fetch(`${API_BASE}/auth/admin/users`, { headers: authHeaders() })
+  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load users: ${res.status}`))
+  return res.json()
+}
+
 export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
   const res = await fetch(`${API_BASE}/auth/me/password`, {
     method: 'PUT',

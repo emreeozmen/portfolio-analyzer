@@ -25,6 +25,7 @@ const AlertsPage = lazy(() => import('./pages/Alerts'))
 const DividendCalendarPage = lazy(() => import('./pages/DividendCalendar'))
 const TaxReportPage = lazy(() => import('./pages/TaxReport'))
 const PublicPortfolioPage = lazy(() => import('./pages/PublicPortfolio'))
+const AdminUsersPage = lazy(() => import('./pages/AdminUsers'))
 
 function RouteFallback() {
   const { t } = useTranslation('common')
@@ -82,6 +83,10 @@ function AppRoutes({ token, onAuthenticated }: { token: string | null; onAuthent
               element={token ? <TaxReportPage /> : <LoginForm onAuthenticated={onAuthenticated} />}
             />
             <Route path="/paylasilan/:token" element={<PublicPortfolioPage />} />
+            <Route
+              path="/admin/kullanicilar"
+              element={token ? <AdminUsersPage /> : <LoginForm onAuthenticated={onAuthenticated} />}
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </div>

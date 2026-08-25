@@ -5,8 +5,10 @@ import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from config import settings
 from database import get_db
 from i18n import get_lang, localize
 from models import User, UserSession
@@ -152,6 +154,15 @@ class AuditLogResponse(BaseModel):
     action: str
     detail: str | None
     created_at: datetime
+
+
+class AdminUserResponse(BaseModel):
+    id: int
+    email: str
+    created_at: datetime
+    # Most recent non-revoked session's last_seen_at across every device — a good-enough
+    # proxy for "last active" without needing a dedicated last-login column on User.
+    last_seen_at: datetime | None
 
 
 @router.post("/register", response_model=TokenResponse, dependencies=[Depends(rate_limit.throttle(20, 3600))])
@@ -418,3 +429,29 @@ def revoke_all_other_sessions(
 @router.get("/activity", response_model=list[AuditLogResponse])
 def get_activity(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return audit_service.list_recent_actions(db, current_user.id)
+
+
+def _require_admin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.email != settings.admin_email:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+    return current_user
+
+
+@router.get("/admin/users", response_model=list[AdminUserResponse])
+def list_all_users(db: Session = Depends(get_db), _admin: User = Depends(_require_admin)):
+    last_seen_subq = (
+        db.query(UserSession.user_id, func.max(UserSession.last_seen_at).label("last_seen_at"))
+        .filter(UserSession.revoked_at.is_(None))
+        .group_by(UserSession.user_id)
+        .subquery()
+    )
+    rows = (
+        db.query(User, last_seen_subq.c.last_seen_at)
+        .outerjoin(last_seen_subq, User.id == last_seen_subq.c.user_id)
+        .order_by(User.created_at.desc())
+        .all()
+    )
+    return [
+        AdminUserResponse(id=u.id, email=u.email, created_at=u.created_at, last_seen_at=last_seen)
+        for u, last_seen in rows
+    ]

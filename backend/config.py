@@ -68,6 +68,12 @@ class Settings(BaseSettings):
     vapid_private_key: str = ""
     vapid_subject: str = "mailto:alerts@portfolio-analyzer.local"
 
+    # The one account allowed to view /auth/admin/users (registered-user count/list).
+    # There's no general role/permission system in this app — a single hardcoded owner
+    # email is the simplest thing that's actually secure for a solo-maintained project;
+    # every other endpoint stays scoped to the caller's own data exactly as before.
+    admin_email: str = "emreozmenn2@gmail.com"
+
     @property
     def sqlalchemy_database_url(self) -> str:
         if self.database_url:
