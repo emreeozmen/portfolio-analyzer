@@ -17,6 +17,21 @@ function unknownSector(): string {
   return i18n.t('notAvailable', { ns: 'common' })
 }
 
+// Module-level (not component state) so it survives this component unmounting/
+// remounting on every route change (App.tsx's page-transition wrapper fully remounts
+// on navigation) — without it, every single visit to Varlık Analizi re-fetched every
+// tracked ticker's full year of price history + computed metrics from scratch and
+// showed a blank loading state until they all came back, which is what made the page
+// feel like it "sometimes loads very slowly" (however long that backend round trip
+// happened to take right then) even for a page you'd just been on moments earlier.
+// Same pattern as asset-market-dashboard.tsx's marketCardsCache.
+let screenerRowsCache: { tickers: string[]; rows: ScreenerRow[]; fetchedAt: number } | null = null
+const SCREENER_CACHE_FRESH_MS = 5 * 60 * 1000
+
+function sameTickerSet(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((ticker, i) => ticker === b[i])
+}
+
 interface ScreenerRow {
   ticker: string
   name: string
@@ -116,12 +131,14 @@ function AssetScreenerPage() {
   ]
   const navigate = useNavigate()
   const [assets, setAssets] = useState<AssetSummary[]>([])
-  const [rows, setRows] = useState<ScreenerRow[]>([])
-  const [loading, setLoading] = useState(true)
+  const [rows, setRows] = useState<ScreenerRow[]>(screenerRowsCache?.rows ?? [])
+  const [loading, setLoading] = useState(screenerRowsCache === null)
   const [error, setError] = useState<string | null>(null)
   const [sortKey, setSortKey] = useState<SortKey>('dailyChangePercent')
   const [sortDesc, setSortDesc] = useState(true)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(
+    screenerRowsCache ? new Date(screenerRowsCache.fetchedAt) : null,
+  )
   const [sectorFilter, setSectorFilter] = useState<string>('all')
   const [compareSelection, setCompareSelection] = useState<string[]>([])
 
@@ -136,23 +153,39 @@ function AssetScreenerPage() {
   const liveQuotes = useLiveChannel<AssetQuote[]>('quotes')
 
   const load = useCallback(
-    (showSpinner: boolean) => {
-      if (showSpinner) setLoading(true)
+    (showSpinner: boolean, opts?: { force?: boolean }) => {
       getAssets()
         .then((data) => {
           setAssets(data)
+          const tickers = data.map((a) => a.ticker)
+          // Skip the network round-trip entirely if we already have fresh data for this
+          // exact ticker set — e.g. navigating back to Varlık Analizi shortly after last
+          // being on it. Without this, every mount re-fetched every asset's full analysis
+          // from scratch, which is what made the page feel like it "sometimes loads very
+          // slowly" (however long that round trip happened to take right then).
+          if (
+            !opts?.force &&
+            screenerRowsCache &&
+            sameTickerSet(screenerRowsCache.tickers, tickers) &&
+            Date.now() - screenerRowsCache.fetchedAt < SCREENER_CACHE_FRESH_MS
+          ) {
+            return null
+          }
+          if (showSpinner) setLoading(true)
           // allSettled, not all — a single slow/failing ticker (e.g. mid backend
           // cold-start) would otherwise block every other already-successful row from
           // ever appearing, since Promise.all only resolves once every request does.
-          return Promise.allSettled(data.map((a) => getAssetAnalysis(a.ticker)))
-        })
-        .then((results) => {
-          const analyses = results
-            .filter((r): r is PromiseFulfilledResult<AssetAnalysis> => r.status === 'fulfilled')
-            .map((r) => r.value)
-          setRows(analyses.map(rowFromAnalysis))
-          setLastUpdated(new Date())
-          setError(analyses.length === 0 && results.length > 0 ? t('screener.loadError') : null)
+          return Promise.allSettled(data.map((a) => getAssetAnalysis(a.ticker))).then((results) => {
+            const analyses = results
+              .filter((r): r is PromiseFulfilledResult<AssetAnalysis> => r.status === 'fulfilled')
+              .map((r) => r.value)
+            const nextRows = analyses.map(rowFromAnalysis)
+            setRows(nextRows)
+            const now = new Date()
+            setLastUpdated(now)
+            setError(analyses.length === 0 && results.length > 0 ? t('screener.loadError') : null)
+            screenerRowsCache = { tickers, rows: nextRows, fetchedAt: now.getTime() }
+          })
         })
         .catch((err) => setError(err instanceof Error ? err.message : String(err)))
         .finally(() => setLoading(false))
