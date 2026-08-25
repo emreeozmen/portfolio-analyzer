@@ -159,6 +159,7 @@
     "title": "Varlık Analizi",
     "intro": "Takip ettiğin tüm varlıkları karşılaştır, bir satıra tıklayarak detaylı analiz ve grafiğe git. Üstteki arama kutusuyla yeni bir hisse ekleyebilirsin.",
     "lastUpdated": "Son güncelleme: {{time}} · her dakika otomatik yenilenir",
+    "loadError": "Varlık verisi şu anda yüklenemedi. Lütfen birazdan tekrar deneyin.",
     "compareAria": "{{ticker}} karşılaştırmaya ekle",
     "sectorFilterAria": "Sektöre göre filtrele",
     "allSectors": "Tüm sektörler",

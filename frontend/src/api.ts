@@ -326,6 +326,48 @@ function authHeaders(): HeadersInit {
   return headers
 }
 
+// Dedupes concurrent identical GET requests and reuses a response for a few seconds —
+// without this, rapidly navigating between pages (e.g. Ana Sayfa <-> Piyasa Görünümü)
+// remounts the market/asset-screener components repeatedly, and each mount independently
+// re-fetches the full asset list plus every displayed ticker's analysis. On a slow/cold
+// backend those requests pile up faster than they drain, so the *current* mount's request
+// can sit queued indefinitely — the page never gets its ticker list back and is left
+// showing no cards, no spinner, no error. Sharing one in-flight promise per key (and
+// reusing its result briefly after) keeps repeated rapid navigation from multiplying load.
+const GET_CACHE_TTL_MS = 15_000
+const responseCache = new Map<string, { data: unknown; expiresAt: number }>()
+const inFlightRequests = new Map<string, Promise<unknown>>()
+
+function cachedGet<T>(key: string, fetcher: () => Promise<T>, ttlMs = GET_CACHE_TTL_MS): Promise<T> {
+  const hit = responseCache.get(key)
+  if (hit && hit.expiresAt > Date.now()) return Promise.resolve(hit.data as T)
+
+  const pending = inFlightRequests.get(key)
+  if (pending) return pending as Promise<T>
+
+  const request = fetcher()
+    .then((data) => {
+      responseCache.set(key, { data, expiresAt: Date.now() + ttlMs })
+      return data
+    })
+    .finally(() => inFlightRequests.delete(key))
+  inFlightRequests.set(key, request)
+  return request
+}
+
+function invalidateCache(prefix: string): void {
+  for (const key of responseCache.keys()) {
+    if (key.startsWith(prefix)) responseCache.delete(key)
+  }
+}
+
+/** Test-only escape hatch — the cache above is module-level and otherwise outlives
+ * individual test cases (and their mocked fetch responses) within the same file. */
+export function __clearApiCacheForTests(): void {
+  responseCache.clear()
+  inFlightRequests.clear()
+}
+
 export async function register(email: string, password: string): Promise<TokenResponse> {
   const res = await fetch(`${API_BASE}/auth/register`, {
     method: 'POST',
@@ -671,15 +713,19 @@ export async function deleteHolding(id: number): Promise<void> {
 }
 
 export async function getAssets(): Promise<AssetSummary[]> {
-  const res = await fetch(`${API_BASE}/assets`, { headers: authHeaders() })
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load assets: ${res.status}`))
-  return res.json()
+  return cachedGet(`assets:${getToken() ?? 'anon'}`, async () => {
+    const res = await fetch(`${API_BASE}/assets`, { headers: authHeaders() })
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load assets: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function getAssetQuotes(): Promise<AssetQuote[]> {
-  const res = await fetch(`${API_BASE}/assets/quotes`, { headers: authHeaders() })
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load quotes: ${res.status}`))
-  return res.json()
+  return cachedGet(`assetQuotes:${getToken() ?? 'anon'}`, async () => {
+    const res = await fetch(`${API_BASE}/assets/quotes`, { headers: authHeaders() })
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load quotes: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function searchAssets(query: string): Promise<SymbolSearchResult[]> {
@@ -700,24 +746,34 @@ export async function trackAsset(result: SymbolSearchResult): Promise<AssetSumma
     }),
   })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to track asset: ${res.status}`))
+  invalidateCache('assets:')
   return res.json()
 }
 
 export async function untrackAsset(ticker: string): Promise<void> {
   const res = await fetch(`${API_BASE}/assets/${ticker}/track`, { method: 'DELETE', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to untrack asset: ${res.status}`))
+  invalidateCache('assets:')
 }
 
 export async function rewatchAsset(ticker: string): Promise<AssetSummary> {
   const res = await fetch(`${API_BASE}/assets/${ticker}/watchlist`, { method: 'POST', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to re-add asset: ${res.status}`))
+  invalidateCache('assets:')
   return res.json()
 }
 
 export async function getAssetAnalysis(ticker: string): Promise<AssetAnalysis> {
-  const res = await fetch(`${API_BASE}/assets/${ticker}/analysis`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load analysis: ${res.status}`))
-  return res.json()
+  return cachedGet(`assetAnalysis:${ticker}`, async () => {
+    // Bounded so a single slow/cold-starting backend response can't hang this request
+    // forever — plain fetch() has no default timeout, and pages that request many
+    // tickers at once (Piyasa Görünümü, Varlık Analizi) wait on the slowest one via
+    // Promise.allSettled, so one stalled request would otherwise stall the whole
+    // page's loading state indefinitely instead of surfacing an error to retry from.
+    const res = await fetch(`${API_BASE}/assets/${ticker}/analysis`, { signal: AbortSignal.timeout(20_000) })
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load analysis: ${res.status}`))
+    return res.json()
+  })
 }
 
 export interface AssetFundamentals {

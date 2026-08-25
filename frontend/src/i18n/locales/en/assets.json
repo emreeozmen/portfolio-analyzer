@@ -159,6 +159,7 @@
     "title": "Asset Analysis",
     "intro": "Compare all the assets you track; click a row to jump to detailed analysis and its chart. Add a new stock with the search bar above.",
     "lastUpdated": "Last updated: {{time}} · refreshes automatically every minute",
+    "loadError": "Couldn't load asset data right now. Please try again shortly.",
     "compareAria": "Add {{ticker}} to comparison",
     "sectorFilterAria": "Filter by sector",
     "allSectors": "All sectors",

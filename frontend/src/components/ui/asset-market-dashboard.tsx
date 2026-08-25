@@ -607,6 +607,11 @@ const AssetMarketDashboard: React.FC = () => {
     marketCardsCache?.analyses ?? {},
   )
   const [displayedTickers, setDisplayedTickers] = useState<string[]>([])
+  // Distinguishes "ticker list not fetched yet" from "fetched, and it's genuinely
+  // empty" — displayedTickers starts at [] either way, and without this flag the very
+  // first render (before getAssets() below has resolved) would look like a legitimate
+  // empty state and wipe out any cards already restored from marketCardsCache.
+  const [tickersLoaded, setTickersLoaded] = useState(false)
   const [loading, setLoading] = useState(marketCardsCache === null)
   const [error, setError] = useState<string | null>(null)
   const [isPickerOpen, setIsPickerOpen] = useState(false)
@@ -624,10 +629,12 @@ const AssetMarketDashboard: React.FC = () => {
         setDisplayedTickers(assets.map((a) => a.ticker))
       })
       .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+      .finally(() => setTickersLoaded(true))
   }, [])
 
   const reloadCards = useCallback(
     (opts?: { force?: boolean }) => {
+      if (!tickersLoaded) return
       if (displayedTickers.length === 0) {
         setCards([])
         setLoading(false)
@@ -647,8 +654,16 @@ const AssetMarketDashboard: React.FC = () => {
         return
       }
       setLoading(true)
-      Promise.all(displayedTickers.map((ticker) => getAssetAnalysis(ticker)))
-        .then((analyses) => {
+      // allSettled, not all — a single slow/failing ticker (e.g. mid cold-start) would
+      // otherwise block every other already-successful card from ever appearing, since
+      // Promise.all rejects (and, worse, a hung request with no timeout would never even
+      // settle) as soon as/unless every request does. Cards for whichever tickers
+      // succeeded are shown regardless of the rest.
+      Promise.allSettled(displayedTickers.map((ticker) => getAssetAnalysis(ticker)))
+        .then((results) => {
+          const analyses = results
+            .filter((r): r is PromiseFulfilledResult<AssetAnalysis> => r.status === 'fulfilled')
+            .map((r) => r.value)
           const nextCards = analyses.map(cardFromAnalysis)
           setCards(nextCards)
           setAnalysesByTicker((prev) => {
@@ -656,6 +671,7 @@ const AssetMarketDashboard: React.FC = () => {
             for (const a of analyses) next[a.ticker] = a
             return next
           })
+          setError(analyses.length === 0 && results.length > 0 ? t('dashboard.loadError') : null)
           const now = new Date()
           setLastUpdated(now)
           marketCardsCache = {
@@ -665,16 +681,15 @@ const AssetMarketDashboard: React.FC = () => {
             fetchedAt: now.getTime(),
           }
         })
-        .catch((err) => setError(err instanceof Error ? err.message : String(err)))
         .finally(() => setLoading(false))
     },
-    [displayedTickers],
+    [displayedTickers, tickersLoaded, t],
   )
 
   useEffect(() => {
     reloadCards()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [displayedTickers])
+  }, [displayedTickers, tickersLoaded])
 
   // Full reload (sparkline + all metrics) only when the backend actually wrote new
   // price data (~5 min), not a blind 60s poll — live price/change in between comes
