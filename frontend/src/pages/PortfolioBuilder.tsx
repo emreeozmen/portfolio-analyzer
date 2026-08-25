@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type Ref } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type Ref } from 'react'
 import type { Chart as ChartJSInstance } from 'chart.js'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Trans, useTranslation } from 'react-i18next'
@@ -96,7 +96,7 @@ function correlationCellStyle(value: number): React.CSSProperties {
   return { backgroundColor: `color-mix(in srgb, var(--${token}) ${intensity}%, transparent)` }
 }
 
-function AllocationSection({
+const AllocationSection = memo(function AllocationSection({
   analysis,
   donutRef,
 }: {
@@ -126,7 +126,7 @@ function AllocationSection({
       </div>
     </section>
   )
-}
+})
 
 function ExposureSection({ analysis }: { analysis: PortfolioAnalysis }) {
   const { t } = useTranslation('portfolio')
@@ -144,7 +144,7 @@ function ExposureSection({ analysis }: { analysis: PortfolioAnalysis }) {
   )
 }
 
-function OptimizationSection({
+const OptimizationSection = memo(function OptimizationSection({
   analysis,
   onApplyWeights,
 }: {
@@ -271,9 +271,9 @@ function OptimizationSection({
       )}
     </section>
   )
-}
+})
 
-function CorrelationSection({ analysis }: { analysis: PortfolioAnalysis }) {
+const CorrelationSection = memo(function CorrelationSection({ analysis }: { analysis: PortfolioAnalysis }) {
   const { t } = useTranslation('portfolio')
   const { tickers, matrix } = analysis.correlation
   const [hovered, setHovered] = useState<{ row: number; col: number } | null>(null)
@@ -338,7 +338,7 @@ function CorrelationSection({ analysis }: { analysis: PortfolioAnalysis }) {
       </div>
     </section>
   )
-}
+})
 
 function buildPortfolioAlerts(analysis: PortfolioAnalysis, t: TFunction<'portfolio'>): RiskAlert[] {
   const alerts: RiskAlert[] = []
@@ -510,7 +510,7 @@ function formatSignedPercent(value: number): string {
   return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
 }
 
-function RiskMetricsSection({ analysis }: { analysis: PortfolioAnalysis }) {
+const RiskMetricsSection = memo(function RiskMetricsSection({ analysis }: { analysis: PortfolioAnalysis }) {
   const { t } = useTranslation('portfolio')
   const { summary } = analysis
   return (
@@ -529,9 +529,9 @@ function RiskMetricsSection({ analysis }: { analysis: PortfolioAnalysis }) {
       </div>
     </section>
   )
-}
+})
 
-function BacktestSection({ analysis }: { analysis: PortfolioAnalysis }) {
+const BacktestSection = memo(function BacktestSection({ analysis }: { analysis: PortfolioAnalysis }) {
   const { t } = useTranslation('portfolio')
   const [windowIndex, setWindowIndex] = useState(1)
   const [result, setResult] = useState<RollingBacktestResult | null>(null)
@@ -628,9 +628,9 @@ function BacktestSection({ analysis }: { analysis: PortfolioAnalysis }) {
       )}
     </section>
   )
-}
+})
 
-function MonteCarloSection({ analysis }: { analysis: PortfolioAnalysis }) {
+const MonteCarloSection = memo(function MonteCarloSection({ analysis }: { analysis: PortfolioAnalysis }) {
   const { t } = useTranslation('portfolio')
   const [horizonIndex, setHorizonIndex] = useState(MONTE_CARLO_HORIZONS.length - 1)
   const [confidenceLevel, setConfidenceLevel] = useState<number>(MONTE_CARLO_CONFIDENCE_LEVELS[0])
@@ -743,7 +743,7 @@ function MonteCarloSection({ analysis }: { analysis: PortfolioAnalysis }) {
       )}
     </section>
   )
-}
+})
 
 const GOAL_HORIZON_YEARS = [5, 10, 15, 20] as const
 
@@ -756,7 +756,7 @@ function formatMonths(months: number, t: TFunction<'portfolio'>): string {
   return t('goalPlanning.yearsAndMonths', { years, months: remMonths })
 }
 
-function GoalPlanningSection({ analysis }: { analysis: PortfolioAnalysis }) {
+const GoalPlanningSection = memo(function GoalPlanningSection({ analysis }: { analysis: PortfolioAnalysis }) {
   const { t } = useTranslation('portfolio')
   useTheme() // re-render on theme toggle so the Chart.js color read below stays current
   const dangerColor = getComputedStyle(document.documentElement).getPropertyValue('--danger').trim() || '#ec5f66'
@@ -907,7 +907,7 @@ function GoalPlanningSection({ analysis }: { analysis: PortfolioAnalysis }) {
       )}
     </section>
   )
-}
+})
 
 function PortfolioComparisonSection({ portfolios }: { portfolios: Portfolio[] }) {
   const { t } = useTranslation('portfolio')
@@ -1256,8 +1256,15 @@ function PortfolioBuilderPage() {
     })
   }
 
-  const benchmarkByDate = new Map(analysis?.benchmark.map((b) => [b.date, b.value]) ?? [])
+  // Memoized: analysis is re-fetched on portfolio selection, not on every render, so
+  // rebuilding this Map (and re-running the O(n^2) alert scan below) on unrelated state
+  // changes (typing in a form field, dragging a weight slider) is wasted work.
+  const benchmarkByDate = useMemo(
+    () => new Map(analysis?.benchmark.map((b) => [b.date, b.value]) ?? []),
+    [analysis],
+  )
   const hasBenchmark = (analysis?.benchmark.length ?? 0) > 0
+  const portfolioAlerts = useMemo(() => (analysis ? buildPortfolioAlerts(analysis, t) : []), [analysis, t])
 
   return (
     <div>
@@ -1539,7 +1546,7 @@ function PortfolioBuilderPage() {
                 </button>
               </div>
             </div>
-            <RiskAlerts alerts={buildPortfolioAlerts(analysis, t)} />
+            <RiskAlerts alerts={portfolioAlerts} />
             <div className="card-grid">
               <Card label={t('builder.totalReturn')} value={formatPercent(analysis.summary.total_return)} />
               <Card label={t('builder.avgDailyReturn')} value={formatPercent(analysis.summary.average_return)} />

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Trans, useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
@@ -646,6 +646,26 @@ function AssetDetailPage() {
 
   const recentPrices = analysis ? analysis.prices.slice().reverse().slice(0, 30) : []
 
+  // Memoized: analysis only changes on a real fetch (ticker change or the
+  // prices-updated live signal), so without this every unrelated re-render (an SMA
+  // checkbox toggle, the watchlist's live quotes updating) built a fresh array
+  // reference and forced CandlestickChart's own useMemo-keyed SMA/clip recompute plus a
+  // full canvas repaint.
+  const candlestickData = useMemo(
+    () =>
+      analysis
+        ? analysis.prices.map((p) => ({
+            date: p.date,
+            open: p.open_price,
+            high: p.high_price,
+            low: p.low_price,
+            close: p.close_price,
+            volume: p.volume,
+          }))
+        : [],
+    [analysis],
+  )
+
   return (
     <div>
       <p className="breadcrumb">
@@ -770,14 +790,7 @@ function AssetDetailPage() {
                       name={analysis.name}
                       currency={analysis.currency}
                       smaOverlays={smaOverlays}
-                      data={analysis.prices.map((p) => ({
-                        date: p.date,
-                        open: p.open_price,
-                        high: p.high_price,
-                        low: p.low_price,
-                        close: p.close_price,
-                        volume: p.volume,
-                      }))}
+                      data={candlestickData}
                     />
                   </section>
 
