@@ -50,13 +50,19 @@ def run_light_migrations() -> None:
     of intent, but don't assume a merged migration file is what patched prod; check
     here.
     """
+    # MSSQL's BIT column accepts the bare literals 0/1; Postgres's native BOOLEAN
+    # rejects them outright (psycopg2.errors.DatatypeMismatch) and needs TRUE/FALSE —
+    # a real bug caught live the first time this path ever actually ran against the
+    # deployed Postgres DB (is_default/email_alerts_enabled never hit it before since
+    # Postgres has always had those two via create_all(), never via this fallback).
+    is_mssql = engine.dialect.name == "mssql"
+    bool_type = "BIT" if is_mssql else "BOOLEAN"
+    bool_false = "0" if is_mssql else "FALSE"
+    bool_true = "1" if is_mssql else "TRUE"
+
     inspector = inspect(engine)
     _add_column_if_missing(inspector, "holdings", "portfolio_id", "INT", "")
-    _add_column_if_missing(inspector, "assets", "is_default", "BIT" if engine.dialect.name == "mssql" else "BOOLEAN", "0")
+    _add_column_if_missing(inspector, "assets", "is_default", bool_type, bool_false)
     _add_column_if_missing(inspector, "assets", "sector", "VARCHAR(60)", "")
-    _add_column_if_missing(
-        inspector, "users", "email_alerts_enabled", "BIT" if engine.dialect.name == "mssql" else "BOOLEAN", "1"
-    )
-    _add_column_if_missing(
-        inspector, "users", "email_verified", "BIT" if engine.dialect.name == "mssql" else "BOOLEAN", "0"
-    )
+    _add_column_if_missing(inspector, "users", "email_alerts_enabled", bool_type, bool_true)
+    _add_column_if_missing(inspector, "users", "email_verified", bool_type, bool_false)
