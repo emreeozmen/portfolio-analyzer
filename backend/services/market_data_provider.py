@@ -5,14 +5,18 @@ into this module and writes results into the price_history table, so the
 rest of the app never talks to Yahoo Finance directly.
 """
 
+import logging
 import time
 from dataclasses import dataclass
 from datetime import date
 
 import requests
+import sentry_sdk
 import yfinance as yf
 
 from services import redis_client
+
+logger = logging.getLogger("uvicorn.error")
 
 BIST_SUFFIX = ".IS"  # Yahoo Finance's suffix for Borsa Istanbul tickers
 SEARCH_URL = "https://query2.finance.yahoo.com/v1/finance/search"
@@ -116,7 +120,9 @@ def get_market_cap(yahoo_symbol: str) -> float | None:
 
     try:
         market_cap = yf.Ticker(yahoo_symbol).info.get("marketCap")
-    except Exception:
+    except Exception as exc:
+        logger.warning("market cap lookup failed for %s: %r", yahoo_symbol, exc)
+        sentry_sdk.capture_exception(exc)
         market_cap = None
 
     market_cap = float(market_cap) if market_cap else None
@@ -133,7 +139,9 @@ def get_sector(yahoo_symbol: str) -> str | None:
     """
     try:
         sector = yf.Ticker(yahoo_symbol).info.get("sector")
-    except Exception:
+    except Exception as exc:
+        logger.warning("sector lookup failed for %s: %r", yahoo_symbol, exc)
+        sentry_sdk.capture_exception(exc)
         return None
     return sector or None
 
@@ -189,7 +197,9 @@ def get_fundamentals(yahoo_symbol: str) -> dict | None:
                 int(info["numberOfAnalystOpinions"]) if isinstance(info.get("numberOfAnalystOpinions"), (int, float)) else None
             ),
         }
-    except Exception:
+    except Exception as exc:
+        logger.warning("fundamentals lookup failed for %s: %r", yahoo_symbol, exc)
+        sentry_sdk.capture_exception(exc)
         result = None
 
     _fundamentals_cache[yahoo_symbol] = (now, result)
@@ -216,7 +226,9 @@ def get_recommendations_trend(yahoo_symbol: str) -> list[dict]:
     try:
         df = yf.Ticker(yahoo_symbol).recommendations
         rows = [] if df is None or df.empty else df.to_dict("records")
-    except Exception:
+    except Exception as exc:
+        logger.warning("recommendations lookup failed for %s: %r", yahoo_symbol, exc)
+        sentry_sdk.capture_exception(exc)
         rows = []
 
     result = [
@@ -269,7 +281,9 @@ def get_earnings_calendar(yahoo_symbol: str) -> dict | None:
             if next_date is not None
             else None
         )
-    except Exception:
+    except Exception as exc:
+        logger.warning("earnings calendar lookup failed for %s: %r", yahoo_symbol, exc)
+        sentry_sdk.capture_exception(exc)
         result = None
 
     _calendar_cache[yahoo_symbol] = (now, result)
@@ -332,7 +346,9 @@ def get_institutional_holders(yahoo_symbol: str) -> dict | None:
             if insider_percent is not None or institutions_percent is not None or top_holders
             else None
         )
-    except Exception:
+    except Exception as exc:
+        logger.warning("institutional holders lookup failed for %s: %r", yahoo_symbol, exc)
+        sentry_sdk.capture_exception(exc)
         result = None
 
     _holders_cache[yahoo_symbol] = (now, result)
