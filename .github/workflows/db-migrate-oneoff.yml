@@ -13,11 +13,18 @@ name: DB migrate (one-off)
 #                      (port 5432) URI, password percent-encoded. DELETE this secret
 #                      and this file once the migration is verified.
 #
-# The destination must be an essentially empty database — a fresh Supabase project's
-# default `postgres` database is fine (our tables land in the `public` schema).
+# Run once with "run_migration = true" to do the dump/restore. Every run (with the
+# input left false) does a read-only row-count comparison of the two databases —
+# safe to re-run any time. Re-running the dump/restore into an already-populated
+# destination would duplicate rows, which is why it's behind an explicit flag.
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      run_migration:
+        description: "Actually perform the pg_dump | pg_restore (leave false to only verify)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -28,6 +35,7 @@ concurrency:
 
 jobs:
   migrate:
+    if: ${{ inputs.run_migration }}
     name: pg_dump source | pg_restore into dest
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -78,20 +86,52 @@ jobs:
           # --no-owner / --no-privileges: land everything as the Supabase role, don't
           # try to reassign ownership. A few "already exists" notices for the public
           # schema are normal on a DB that isn't bone-empty, so tolerate a non-zero
-          # exit here and rely on the row-count check below.
+          # exit here and rely on the verify job below.
           pg_restore --no-owner --no-privileges --no-comments \
-            --dbname="$DST" migrate.dump || echo "pg_restore reported non-zero (often just pre-existing objects) — verifying below."
+            --dbname="$DST" migrate.dump || echo "pg_restore reported non-zero (often just pre-existing objects) — the verify job checks the result."
 
-      - name: Verify row counts match
+  verify:
+    name: Compare row counts (read-only, always runs)
+    runs-on: ubuntu-latest
+    needs: [migrate]
+    if: ${{ always() }}
+    timeout-minutes: 10
+    env:
+      PGSSLMODE: require
+    steps:
+      - name: Install psql (client 18)
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends curl ca-certificates gnupg lsb-release
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            | sudo gpg --dearmor -o /usr/share/keyrings/pgdg.gpg
+          echo "deb [signed-by=/usr/share/keyrings/pgdg.gpg] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client-18
+          echo "/usr/lib/postgresql/18/bin" >> "$GITHUB_PATH"
+
+      - name: Row-count diff
         env:
           SRC: ${{ secrets.DATABASE_URL }}
           DST: ${{ secrets.MIGRATE_DEST_URL }}
         run: |
           set -euo pipefail
-          Q="SELECT string_agg(t.tbl || '=' || (xpath('/row/c/text()', x))[1]::text, ' ' ORDER BY t.tbl)
-             FROM (SELECT table_name AS tbl FROM information_schema.tables
-                   WHERE table_schema='public' AND table_type='BASE TABLE') t,
-             LATERAL query_to_xml(format('SELECT count(*) AS c FROM public.%I', t.tbl), true, false, '') x;"
-          echo "SOURCE:"; psql "$SRC" -Atqc "$Q"
-          echo "DEST:";   psql "$DST" -Atqc "$Q"
-          echo "Compare the two lines above — every table's count must match."
+          Q="SELECT table_name || '=' ||
+                 (xpath('/row/c/text()',
+                        query_to_xml(format('SELECT count(*) AS c FROM public.%I', table_name),
+                                     false, true, '')))[1]::text
+             FROM information_schema.tables
+             WHERE table_schema='public' AND table_type='BASE TABLE'
+             ORDER BY table_name;"
+          psql "$SRC" -Atqc "$Q" > src_counts.txt
+          psql "$DST" -Atqc "$Q" > dst_counts.txt
+          echo "=== SOURCE (Render) ===" && cat src_counts.txt
+          echo "=== DEST (Supabase) ===" && cat dst_counts.txt
+          if diff -u src_counts.txt dst_counts.txt; then
+            echo "OK - every table's row count matches. Migration verified."
+          else
+            echo "::error::Row counts differ between source and destination (see diff above)."
+            exit 1
+          fi
