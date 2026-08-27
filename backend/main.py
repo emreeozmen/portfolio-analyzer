@@ -327,6 +327,9 @@ app.include_router(push.router)
 app.include_router(ws.router)
 
 
-@app.get("/health")
+# Accept HEAD as well as GET: uptime monitors (UptimeRobot's free tier among them)
+# default to HEAD requests, and a GET-only route answers those with 405, which a
+# monitor reports as downtime even though the service is healthy.
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health():
     return {"status": "ok"}
