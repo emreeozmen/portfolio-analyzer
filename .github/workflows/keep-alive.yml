@@ -1,11 +1,20 @@
 name: Keep backend awake
 
 # Render's free tier spins the backend down after ~15 minutes of no requests, and the
-# next real request then pays a 30-60s+ cold-start cost — this is what made the
-# deployed site feel "stuck" after an idle period. Pinging the lightweight /health
-# endpoint (no DB/external calls) every 10 minutes keeps the instance warm so real
-# visitors don't hit that cold start. Free on GitHub's shared runners; remove this
-# workflow if the backend ever moves to a plan that doesn't spin down.
+# next real request then pays a 30-60s+ cold-start cost — this is what makes the
+# deployed site feel "stuck" after an idle period.
+#
+# This workflow is a BEST-EFFORT BACKUP, not the primary keep-alive. GitHub Actions
+# `schedule` events are low priority and heavily throttled: this job is configured to
+# run every 10 minutes but in practice fires anywhere from ~20 minutes to several
+# hours apart (and is skipped entirely during high-load periods), so on its own it
+# does NOT reliably keep the instance warm.
+#
+# The primary keep-alive is an external uptime monitor (UptimeRobot) hitting the same
+# /health endpoint every 5 minutes, which also alerts if the backend is actually down.
+# Keep this workflow as a zero-cost extra ping (public repo = unlimited Actions
+# minutes); remove it, and the UptimeRobot monitor, if the backend ever moves to a
+# plan that doesn't spin down.
 on:
   schedule:
     - cron: "*/10 * * * *"
