@@ -3,7 +3,18 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 from config import settings
 
-engine = create_engine(settings.sqlalchemy_database_url)
+# pool_pre_ping: check a pooled connection is still alive before handing it out, and
+# transparently replace it if not. Managed Postgres (Render, Neon, Supabase) and the
+# network in front of it drop idle connections server-side — without this the first
+# request after a DB restart, a Neon autosuspend, or a brief network blip fails with
+# "connection already closed" instead of just reconnecting.
+# pool_recycle: proactively retire connections older than 5 minutes so they're
+# refreshed before the server's own idle timeout can close them mid-request.
+engine = create_engine(
+    settings.sqlalchemy_database_url,
+    pool_pre_ping=True,
+    pool_recycle=300,
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
