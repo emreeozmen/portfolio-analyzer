@@ -9,6 +9,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
 
@@ -327,9 +328,34 @@ app.include_router(push.router)
 app.include_router(ws.router)
 
 
+# Liveness: is the process up and serving? Deliberately touches nothing else — no DB,
+# no external calls — so a transient database or Yahoo Finance hiccup never makes this
+# fail. This is what Render's `healthCheckPath` points at, so a dependency blip can't
+# trigger a restart loop; it's also the cheap endpoint the keep-alive pings hit.
 # Accept HEAD as well as GET: uptime monitors (UptimeRobot's free tier among them)
 # default to HEAD requests, and a GET-only route answers those with 405, which a
 # monitor reports as downtime even though the service is healthy.
 @app.api_route("/health", methods=["GET", "HEAD"])
 def health():
     return {"status": "ok"}
+
+
+# Readiness: can the process actually serve real traffic right now? Runs the cheapest
+# possible round-trip to the database (`SELECT 1`). Returns 503 (not 500) when the DB
+# is unreachable so a monitor can distinguish "app is up but degraded" from "app is
+# down". NOT wired to Render's health check on purpose — a DB outage should page us,
+# not make Render kill and re-roll the web service. Point a secondary uptime monitor
+# here for dependency-level alerting.
+@app.api_route("/health/ready", methods=["GET", "HEAD"])
+def health_ready():
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except Exception as exc:  # noqa: BLE001 - any DB error means "not ready"
+        sentry_sdk.capture_exception(exc)
+        logger.error("Readiness check failed: database unreachable: %s", exc)
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unavailable", "checks": {"database": "down"}},
+        )
+    return {"status": "ready", "checks": {"database": "ok"}}

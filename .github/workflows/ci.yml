@@ -1,0 +1,79 @@
+name: CI
+
+# Runs the backend test suite and the frontend lint / unit tests / production build
+# on every push to main and every PR targeting it. This is the automated gate the
+# project didn't have before: a change that breaks the tests or the build shows up
+# as a red check (and emails whoever pushed) instead of only being discovered after
+# it has already deployed. It does NOT run the Playwright e2e suite — those need both
+# the frontend dev server and the Python backend running at once (see
+# frontend/e2e/ and playwright.config.ts), which isn't worth wiring into CI yet.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11.9" # keep in sync with render.yaml's PYTHON_VERSION
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install unixODBC headers (pyodbc build/runtime dependency)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends unixodbc-dev
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run pytest
+        env:
+          # The suite runs entirely against in-memory SQLite and mocks every network
+          # call, so no real database or secrets are needed — this is just a
+          # long-enough value to avoid the short-key warning from the JWT library.
+          JWT_SECRET_KEY: ci-placeholder-secret-ci-placeholder-secret
+        run: python -m pytest -q
+
+  frontend:
+    name: Frontend lint, tests & build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests (Vitest)
+        run: npm test
+
+      - name: Production build (tsc -b && vite build)
+        run: npm run build

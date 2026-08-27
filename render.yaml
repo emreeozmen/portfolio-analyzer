@@ -6,6 +6,13 @@ services:
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    # Liveness endpoint (no DB / no external calls — see main.py). Render polls this
+    # during a deploy and only shifts traffic to the new instance once it returns
+    # 200, so a build that boots broken never replaces the running one; Render also
+    # auto-restarts the service if this starts failing. Deliberately NOT /health/ready
+    # (which checks the DB) — a database outage should alert us, not make Render kill
+    # and re-roll the web service in a loop.
+    healthCheckPath: /health
     envVars:
       # Pinned so pip can resolve prebuilt wheels for pandas/numpy/scipy — without
       # this, Render's default (much newer) Python has no matching wheels for the
@@ -25,6 +32,13 @@ services:
       # will block API calls with a CORS error.
       - key: CORS_ORIGINS
         value: https://portfolio-analyzer-smoky.vercel.app
+      # Error tracking. Left unset here (sync: false) so it's entered in the Render
+      # dashboard, not committed — an empty/missing DSN makes every sentry_sdk.*
+      # call a documented no-op, so the app runs identically until a real DSN from
+      # sentry.io (New Project -> FastAPI) is pasted in. Turning this on is what
+      # makes a backend crash page you instead of waiting for a user to report it.
+      - key: SENTRY_DSN
+        sync: false
 
 databases:
   - name: portfolio-analyzer-db

@@ -1,0 +1,92 @@
+name: Database backup
+
+# Render's free Postgres plan takes no backups of its own, and this specific instance
+# is scheduled to be DELETED on 2026-09-24 unless it's upgraded to a paid plan — so a
+# mistake, or that expiry, means permanent data loss. This job runs pg_dump once a
+# day and keeps each dump as a downloadable artifact for 90 days.
+# Restore a dump with:  pg_restore --clean --if-exists --no-owner -d "<target DATABASE_URL>" backup-*.dump
+#
+# Requires one repository secret, DATABASE_URL, set to Render's **External** database
+# connection string (Render dashboard -> the database -> Connect -> External ->
+# "External Database URL" — the internal one is only reachable from inside Render's
+# network). SSL is forced below because Render requires it.
+
+on:
+  schedule:
+    - cron: "17 3 * * *" # 03:17 UTC daily (off the top of the hour to dodge scheduler congestion)
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  dump:
+    name: pg_dump to artifact
+    runs-on: ubuntu-latest
+    env:
+      PGSSLMODE: require
+    steps:
+      - name: Install PostgreSQL client 18
+        # pg_dump refuses to dump from a server newer than itself, and the Render
+        # database runs PostgreSQL 18 — which ubuntu-latest's default repos don't
+        # carry — so the PGDG apt repo is added explicitly to get an exact match.
+        # Bump this number if the Render instance is ever upgraded to a newer major.
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends curl ca-certificates gnupg lsb-release
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            | sudo gpg --dearmor -o /usr/share/keyrings/pgdg.gpg
+          echo "deb [signed-by=/usr/share/keyrings/pgdg.gpg] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client-18
+          pg_dump --version
+
+      - name: Verify DATABASE_URL secret is present
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::The DATABASE_URL repository secret is not set. Add Render's External Database URL as a secret named DATABASE_URL."
+            exit 1
+          fi
+
+      - name: Run pg_dump
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          STAMP="$(date -u +%Y%m%d-%H%M%SZ)"
+          FILE="backup-${STAMP}.dump"
+          echo "FILE=${FILE}" >> "$GITHUB_ENV"
+          # -Fc = compressed custom format (restore with pg_restore). --no-owner /
+          # --no-privileges keep the dump portable to a fresh database with a
+          # different role name.
+          pg_dump --dbname="$DATABASE_URL" --format=custom --no-owner --no-privileges --file="$FILE"
+
+      - name: Check the dump is valid and non-trivial
+        run: |
+          set -euo pipefail
+          SIZE="$(stat -c%s "$FILE")"
+          echo "Dump size: ${SIZE} bytes"
+          if [ "$SIZE" -lt 1000 ]; then
+            echo "::error::Dump is suspiciously small (${SIZE} bytes) — treating as a failed backup."
+            exit 1
+          fi
+          # pg_restore --list parses the archive's table of contents; it fails on a
+          # truncated or corrupt dump without touching any database.
+          pg_restore --list "$FILE" > /dev/null
+          echo "pg_restore --list succeeded — archive is readable."
+
+      - name: Upload dump as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.FILE }}
+          path: ${{ env.FILE }}
+          retention-days: 90
+          if-no-files-found: error
