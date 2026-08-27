@@ -28,27 +28,45 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    # Importing main.py runs Base.metadata.create_all() at module load, so the suite
+    # needs a real database. Postgres (not SQLite) on purpose: it's what production
+    # runs, so this also exercises the dialect-specific code paths — the kind of
+    # difference behind past "worked locally, broke prod" fixes in the history.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: pa
+          POSTGRES_PASSWORD: pa
+          POSTGRES_DB: portfolio_analyzer_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pa -d portfolio_analyzer_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql+psycopg2://pa:pa@localhost:5432/portfolio_analyzer_test
+      # The suite runs against in-memory SQLite fixtures and mocks every network
+      # call; this is just long enough to avoid the JWT library's short-key warning.
+      JWT_SECRET_KEY: ci-placeholder-secret-ci-placeholder-secret
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11.9" # keep in sync with render.yaml's PYTHON_VERSION
           cache: pip
           cache-dependency-path: backend/requirements.txt
 
-      - name: Install unixODBC headers (pyodbc build/runtime dependency)
+      - name: Install unixODBC runtime (pyodbc is in requirements.txt)
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends unixodbc-dev
 
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
       - name: Run pytest
-        env:
-          # The suite runs entirely against in-memory SQLite and mocks every network
-          # call, so no real database or secrets are needed — this is just a
-          # long-enough value to avoid the short-key warning from the JWT library.
-          JWT_SECRET_KEY: ci-placeholder-secret-ci-placeholder-secret
         run: python -m pytest -q
 
   frontend:
@@ -58,9 +76,9 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: npm
