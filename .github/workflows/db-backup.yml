@@ -27,6 +27,7 @@ jobs:
   dump:
     name: pg_dump to artifact
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       PGSSLMODE: require
     steps:

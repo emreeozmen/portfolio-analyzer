@@ -17,10 +17,9 @@ def test_health_liveness_returns_ok():
 def test_health_liveness_never_touches_the_database():
     # Liveness must stay up even when the DB is unreachable — Render's health check
     # points here, so a DB blip must not make it fail and trigger a restart loop.
-    with patch.object(
-        main.engine, "connect", side_effect=AssertionError("must not be called")
-    ):
+    with patch.object(main.engine, "connect") as connect:
         assert main.health() == {"status": "ok"}
+    connect.assert_not_called()
 
 
 def test_health_ready_returns_ready_when_database_is_reachable():
