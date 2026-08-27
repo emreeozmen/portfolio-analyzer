@@ -22,10 +22,14 @@ services:
       # Python version requirements.txt's pins were built against (see backend/venv).
       - key: PYTHON_VERSION
         value: 3.11.9
+      # Managed in the dashboard, NOT synced from here: the database moved off Render's
+      # free Postgres (which is deleted 2026-09-24) to Supabase's free tier on
+      # 2026-08-27. Leaving this as `fromDatabase` would make every Blueprint sync
+      # revert the app to the abandoned Render database. The `databases:` block below
+      # is kept only so a sync doesn't try to delete the old instance before it's
+      # manually removed — delete both once portfolio-analyzer-db is gone.
       - key: DATABASE_URL
-        fromDatabase:
-          name: portfolio-analyzer-db
-          property: connectionString
+        sync: false
       - key: JWT_SECRET_KEY
         generateValue: true
       # Must match the real Vercel URL exactly (no trailing slash) or the browser
@@ -40,6 +44,10 @@ services:
       - key: SENTRY_DSN
         sync: false
 
+# Retired 2026-08-27 — the app now uses Supabase (see the DATABASE_URL note above).
+# Kept here only so a Blueprint sync doesn't auto-delete the instance mid-migration;
+# remove this block once portfolio-analyzer-db has been deleted from the Render
+# dashboard (or after it auto-expires on 2026-09-24).
 databases:
   - name: portfolio-analyzer-db
     plan: free
