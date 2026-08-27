@@ -1,17 +1,20 @@
 name: DB migrate (one-off)
 
-# ONE-OFF: copies the entire database from MIGRATE_SOURCE_URL to MIGRATE_DEST_URL
-# (schema + data) using pg_dump | pg_restore on a GitHub runner, so no local
-# PostgreSQL client is needed. Used once to move off Render's free Postgres (which
-# is deleted 2026-09-24) onto Supabase's free tier.
+# ONE-OFF: copies the entire database (schema + data) from the DATABASE_URL secret
+# to the MIGRATE_DEST_URL secret using pg_dump | pg_restore on a GitHub runner, so no
+# local PostgreSQL client is needed. Used once to move off Render's free Postgres
+# (deleted 2026-09-24) onto Supabase's free tier.
 #
-# Before running, add two repository secrets (Settings -> Secrets and variables ->
-# Actions), then delete them and this file once the migration is verified:
-#   MIGRATE_SOURCE_URL  - Render: the database -> Connect -> External -> External Database URL
-#   MIGRATE_DEST_URL    - Supabase: Project -> Connect -> "Session pooler" (port 5432) URI
+# Needs two repository secrets (Settings -> Secrets and variables -> Actions):
+#   DATABASE_URL     - source. Render: the database -> Connect -> External ->
+#                      "External Database URL". (Also used by db-backup.yml; after
+#                      the cutover, repoint this one at Supabase too.)
+#   MIGRATE_DEST_URL - destination. Supabase: Project -> Connect -> Session pooler
+#                      (port 5432) URI, password percent-encoded. DELETE this secret
+#                      and this file once the migration is verified.
 #
-# The destination must be an EMPTY database (a fresh Supabase project's default
-# `postgres` database is fine — our tables land in the `public` schema).
+# The destination must be an essentially empty database — a fresh Supabase project's
+# default `postgres` database is fine (our tables land in the `public` schema).
 
 on:
   workflow_dispatch: {}
@@ -46,17 +49,17 @@ jobs:
 
       - name: Check both secrets are present
         env:
-          SRC: ${{ secrets.MIGRATE_SOURCE_URL }}
+          SRC: ${{ secrets.DATABASE_URL }}
           DST: ${{ secrets.MIGRATE_DEST_URL }}
         run: |
           if [ -z "$SRC" ] || [ -z "$DST" ]; then
-            echo "::error::Set both MIGRATE_SOURCE_URL and MIGRATE_DEST_URL repository secrets first."
+            echo "::error::Set both DATABASE_URL and MIGRATE_DEST_URL repository secrets first."
             exit 1
           fi
 
       - name: Dump source database
         env:
-          SRC: ${{ secrets.MIGRATE_SOURCE_URL }}
+          SRC: ${{ secrets.DATABASE_URL }}
         run: |
           set -euo pipefail
           pg_dump --dbname="$SRC" --format=custom --no-owner --no-privileges --file=migrate.dump
@@ -69,15 +72,15 @@ jobs:
         run: |
           set -euo pipefail
           # --no-owner / --no-privileges: land everything as the Supabase role, don't
-          # try to reassign ownership. Exit status is checked, but a handful of
-          # "already exists" notices for the public schema are normal on a DB that
-          # isn't bone-empty, so tolerate them and rely on the verify step instead.
+          # try to reassign ownership. A few "already exists" notices for the public
+          # schema are normal on a DB that isn't bone-empty, so tolerate a non-zero
+          # exit here and rely on the row-count check below.
           pg_restore --no-owner --no-privileges --no-comments \
             --dbname="$DST" migrate.dump || echo "pg_restore reported non-zero (often just pre-existing objects) — verifying below."
 
       - name: Verify row counts match
         env:
-          SRC: ${{ secrets.MIGRATE_SOURCE_URL }}
+          SRC: ${{ secrets.DATABASE_URL }}
           DST: ${{ secrets.MIGRATE_DEST_URL }}
         run: |
           set -euo pipefail
