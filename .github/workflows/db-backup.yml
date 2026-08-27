@@ -46,7 +46,11 @@ jobs:
             | sudo tee /etc/apt/sources.list.d/pgdg.list
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends postgresql-client-18
-          pg_dump --version
+          # The runner already ships postgresql-client-16, and /usr/bin/pg_dump is a
+          # pg_wrapper that keeps resolving to 16 — which refuses to dump an 18
+          # server. Put the real v18 binaries first on PATH for later steps.
+          echo "/usr/lib/postgresql/18/bin" >> "$GITHUB_PATH"
+          /usr/lib/postgresql/18/bin/pg_dump --version
 
       - name: Verify DATABASE_URL secret is present
         env:
