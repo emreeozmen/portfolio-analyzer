@@ -89,7 +89,7 @@ jobs:
           echo "pg_restore --list succeeded — archive is readable."
 
       - name: Upload dump as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.FILE }}
           path: ${{ env.FILE }}
