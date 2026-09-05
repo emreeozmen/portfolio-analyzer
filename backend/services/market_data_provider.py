@@ -638,3 +638,20 @@ def search_symbols(query: str, limit: int = 8) -> list[SymbolResult]:
             )
         )
     return results
+
+
+def get_symbol_info(yahoo_symbol: str) -> SymbolResult | None:
+    """Verified ticker/name/exchange for a known yahoo_symbol, straight from Yahoo
+    Finance's own search results — used by /assets/track to derive what actually gets
+    stored instead of trusting whatever ticker/name/exchange a client claims for a
+    given yahoo_symbol. Without this, a client could POST a real, trackable
+    yahoo_symbol alongside an arbitrary display name (e.g. a phishing message or an
+    HTML/script payload) and have it stored and served back by the public
+    /assets/{ticker}/analysis endpoint verbatim. Returns None if no exact-symbol match
+    comes back (an unknown/mistyped symbol); raises ValueError if the lookup itself
+    fails (network/upstream error), same as search_symbols.
+    """
+    for candidate in search_symbols(yahoo_symbol):
+        if candidate.yahoo_symbol == yahoo_symbol:
+            return candidate
+    return None

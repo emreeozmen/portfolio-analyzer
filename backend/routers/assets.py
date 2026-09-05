@@ -92,12 +92,24 @@ def search_assets(
 def track_asset(
     payload: TrackAssetRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
+    # ticker/name/exchange are re-derived from a verified Yahoo Finance lookup rather
+    # than trusting the client's payload for them — otherwise any authenticated user
+    # could attach an arbitrary (including HTML/script) display name to a real symbol,
+    # which then gets stored and served back by the public /assets/{ticker}/analysis
+    # endpoint with no auth at all.
+    try:
+        verified = market_data_provider.get_symbol_info(payload.yahoo_symbol)
+    except ValueError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    if verified is None:
+        raise HTTPException(status_code=400, detail=f"'{payload.yahoo_symbol}' bilinen bir sembol değil")
+
     asset = asset_service.get_or_create_asset(
         db,
-        ticker=payload.ticker,
-        name=payload.name,
-        yahoo_symbol=payload.yahoo_symbol,
-        exchange=payload.exchange,
+        ticker=verified.ticker,
+        name=verified.name,
+        yahoo_symbol=verified.yahoo_symbol,
+        exchange=verified.exchange,
     )
 
     # Only add to the user's watchlist once we know there's real price data behind
