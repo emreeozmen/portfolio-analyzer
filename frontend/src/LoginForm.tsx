@@ -5,12 +5,13 @@ import * as api from './api'
 
 interface LoginFormProps {
   onAuthenticated: (token: string) => void
+  sessionExpired?: boolean
 }
 
 const ASIDE_POINT_KEYS = ['point1', 'point2', 'point3'] as const
 const ASIDE_POINT_ICONS = [BarChart3, CandlestickChart, PieChart] as const
 
-function LoginForm({ onAuthenticated }: LoginFormProps) {
+function LoginForm({ onAuthenticated, sessionExpired }: LoginFormProps) {
   const { t } = useTranslation('auth')
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
@@ -133,6 +134,7 @@ function LoginForm({ onAuthenticated }: LoginFormProps) {
         </div>
         <h2>{mode === 'login' ? t('login.loginHeading') : t('login.registerHeading')}</h2>
 
+        {sessionExpired && !error && <p className="error">{t('login.sessionExpired')}</p>}
         {error && <p className="error">{error}</p>}
 
         <form onSubmit={handleSubmit}>

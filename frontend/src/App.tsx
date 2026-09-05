@@ -7,6 +7,7 @@ import LoginForm from './LoginForm'
 import Home from './pages/Home'
 import NotFound from './pages/NotFound'
 import { clearToken, getToken, setToken } from './auth'
+import { setUnauthorizedListener } from './api'
 import { LiveDataProvider } from './lib/LiveDataContext'
 import './App.css'
 
@@ -33,7 +34,15 @@ function RouteFallback() {
   return <p className="muted">{t('actions.loading')}</p>
 }
 
-function AppRoutes({ token, onAuthenticated }: { token: string | null; onAuthenticated: (token: string) => void }) {
+function AppRoutes({
+  token,
+  onAuthenticated,
+  sessionExpired,
+}: {
+  token: string | null
+  onAuthenticated: (token: string) => void
+  sessionExpired: boolean
+}) {
   // Keyed on pathname (not full location, so query-string-only changes like
   // /karsilastir?tickers=... don't replay the fade) so each real page navigation
   // remounts this subtree and re-triggers the .page-transition CSS animation —
@@ -65,29 +74,29 @@ function AppRoutes({ token, onAuthenticated }: { token: string | null; onAuthent
             <Route path="/enflasyon" element={<InflationMapPage />} />
             <Route
               path="/portfolio"
-              element={token ? <PortfolioBuilderPage /> : <LoginForm onAuthenticated={onAuthenticated} />}
+              element={token ? <PortfolioBuilderPage /> : <LoginForm onAuthenticated={onAuthenticated} sessionExpired={sessionExpired} />}
             />
             <Route
               path="/hesap"
-              element={token ? <AccountSettingsPage /> : <LoginForm onAuthenticated={onAuthenticated} />}
+              element={token ? <AccountSettingsPage /> : <LoginForm onAuthenticated={onAuthenticated} sessionExpired={sessionExpired} />}
             />
             <Route
               path="/uyarilar"
-              element={token ? <AlertsPage /> : <LoginForm onAuthenticated={onAuthenticated} />}
+              element={token ? <AlertsPage /> : <LoginForm onAuthenticated={onAuthenticated} sessionExpired={sessionExpired} />}
             />
             <Route
               path="/temettuler"
-              element={token ? <DividendCalendarPage /> : <LoginForm onAuthenticated={onAuthenticated} />}
+              element={token ? <DividendCalendarPage /> : <LoginForm onAuthenticated={onAuthenticated} sessionExpired={sessionExpired} />}
             />
             <Route
               path="/vergi-raporu"
-              element={token ? <TaxReportPage /> : <LoginForm onAuthenticated={onAuthenticated} />}
+              element={token ? <TaxReportPage /> : <LoginForm onAuthenticated={onAuthenticated} sessionExpired={sessionExpired} />}
             />
             <Route path="/paylasilan/:token" element={<PublicPortfolioPage />} />
             <Route path="/dogrula" element={<VerifyEmailPage />} />
             <Route
               path="/admin/kullanicilar"
-              element={token ? <AdminUsersPage /> : <LoginForm onAuthenticated={onAuthenticated} />}
+              element={token ? <AdminUsersPage /> : <LoginForm onAuthenticated={onAuthenticated} sessionExpired={sessionExpired} />}
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
@@ -99,10 +108,12 @@ function AppRoutes({ token, onAuthenticated }: { token: string | null; onAuthent
 
 function App() {
   const [token, setTokenState] = useState<string | null>(() => getToken())
+  const [sessionExpired, setSessionExpired] = useState(false)
 
   const handleAuthenticated = (newToken: string) => {
     setToken(newToken)
     setTokenState(newToken)
+    setSessionExpired(false)
   }
 
   const handleLogout = () => {
@@ -110,13 +121,25 @@ function App() {
     setTokenState(null)
   }
 
+  // A 401 from any authenticated endpoint (expired JWT, revoked session) fires this
+  // instead of leaving the user stuck on whatever protected page showed the raw
+  // "Invalid or expired token" error — see api.ts's parseErrorDetail.
+  useEffect(() => {
+    setUnauthorizedListener(() => {
+      clearToken()
+      setTokenState(null)
+      setSessionExpired(true)
+    })
+    return () => setUnauthorizedListener(null)
+  }, [])
+
   return (
     <BrowserRouter>
       {/* Remounted (key={token}) on login/logout so the shared WebSocket reconnects
           with (or without) the auth token — see LiveDataContext.tsx. */}
       <LiveDataProvider key={token ?? 'anon'}>
         <Layout isAuthenticated={!!token} onLogout={handleLogout}>
-          <AppRoutes token={token} onAuthenticated={handleAuthenticated} />
+          <AppRoutes token={token} onAuthenticated={handleAuthenticated} sessionExpired={sessionExpired} />
         </Layout>
       </LiveDataProvider>
     </BrowserRouter>

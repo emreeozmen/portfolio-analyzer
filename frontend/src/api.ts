@@ -297,7 +297,23 @@ export interface LoginResult {
   challenge_token: string | null
 }
 
+// Registered by App.tsx so a 401 from any authenticated endpoint (an expired JWT,
+// or a session revoked server-side) clears the stale token and drops the user back
+// to the login screen instead of leaving them stuck looking at a raw error banner
+// on whatever protected page they were on — see parseErrorDetail below.
+let unauthorizedListener: (() => void) | null = null
+
+export function setUnauthorizedListener(listener: (() => void) | null): void {
+  unauthorizedListener = listener
+}
+
 async function parseErrorDetail(res: Response, fallback: string): Promise<string> {
+  // Only treat this as a stale session if we actually sent a token — a 401 from
+  // /auth/login (wrong password) happens with no token in storage and is a normal
+  // login failure, not an expired session.
+  if (res.status === 401 && getToken()) {
+    unauthorizedListener?.()
+  }
   try {
     const body = await res.json()
     const detail = body.detail
