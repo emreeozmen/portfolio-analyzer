@@ -53,7 +53,7 @@ jobs:
       # call; this is just long enough to avoid the JWT library's short-key warning.
       JWT_SECRET_KEY: ci-placeholder-secret-ci-placeholder-secret
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v6
         with:
@@ -78,7 +78,7 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v5
         with:
