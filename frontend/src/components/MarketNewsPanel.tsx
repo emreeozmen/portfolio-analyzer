@@ -11,9 +11,10 @@ import { useLiveChannel } from '../lib/useLiveChannel'
  */
 function MarketNewsPanel() {
   const { t } = useTranslation('market')
-  const [items, setItems] = useState<NewsItem[]>([])
+  const [initialItems, setInitialItems] = useState<NewsItem[]>([])
   const [error, setError] = useState(false)
   const live = useLiveChannel<NewsItem[]>('news')
+  const items = live ?? initialItems
 
   const timeAgo = (isoDate: string | null): string => {
     if (!isoDate) return ''
@@ -29,13 +30,9 @@ function MarketNewsPanel() {
 
   useEffect(() => {
     getMarketNews()
-      .then(setItems)
+      .then(setInitialItems)
       .catch(() => setError(true))
   }, [])
-
-  useEffect(() => {
-    if (live) setItems(live)
-  }, [live])
 
   if (error || items.length === 0) return null
 

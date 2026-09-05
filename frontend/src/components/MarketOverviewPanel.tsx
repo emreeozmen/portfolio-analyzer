@@ -51,7 +51,7 @@ function HeroIndexCard() {
   const { t } = useTranslation('market')
   const rangeLabels = [...HERO_RANGE_LABELS, t('heroRanges.all')]
   const [history, setHistory] = useState<IndexHistoryPoint[]>([])
-  const [strip, setStrip] = useState<TickerStripQuote[]>([])
+  const [initialStrip, setInitialStrip] = useState<TickerStripQuote[]>([])
   const [rangeIndex, setRangeIndex] = useState(HERO_RANGE_DAYS.length - 1)
   const [error, setError] = useState(false)
   const liveStrip = useLiveChannel<TickerStripQuote[]>('ticker-strip')
@@ -62,15 +62,16 @@ function HeroIndexCard() {
     Promise.all([getBist100History(), getTickerStrip()])
       .then(([h, s]) => {
         setHistory(h)
-        setStrip(s)
+        setInitialStrip(s)
       })
       .catch(() => setError(true))
   }, [])
 
-  useEffect(() => {
-    if (liveStrip) setStrip(liveStrip)
-  }, [liveStrip])
-
+  // Prefer the live WebSocket value over the one-time initial fetch, without mirroring
+  // it into its own state — syncing a derived value via a second effect just costs an
+  // extra render pass every time a live tick arrives, for no benefit over deriving it
+  // directly during render.
+  const strip = liveStrip ?? initialStrip
   const bist100 = strip.find((s) => s.symbol === 'XU100.IS')
 
   const days = HERO_RANGE_DAYS[rangeIndex]
@@ -117,16 +118,14 @@ function HeroIndexCard() {
 
 function MajorIndicesCard() {
   const { t } = useTranslation('market')
-  const [indices, setIndices] = useState<TickerStripQuote[]>([])
+  const [initialIndices, setInitialIndices] = useState<TickerStripQuote[]>([])
   const live = useLiveChannel<TickerStripQuote[]>('indices')
 
   useEffect(() => {
-    getMajorIndices().then(setIndices).catch(() => {})
+    getMajorIndices().then(setInitialIndices).catch(() => {})
   }, [])
 
-  useEffect(() => {
-    if (live) setIndices(live)
-  }, [live])
+  const indices = live ?? initialIndices
 
   if (indices.length === 0) return null
 
@@ -156,27 +155,22 @@ function MajorIndicesCard() {
 
 function CryptoSummaryCard() {
   const { t } = useTranslation('market')
-  const [stats, setStats] = useState<CryptoGlobalStats | null>(null)
-  const [topCoins, setTopCoins] = useState<CryptoQuote[]>([])
+  const [initialStats, setInitialStats] = useState<CryptoGlobalStats | null>(null)
+  const [initialTopCoins, setInitialTopCoins] = useState<CryptoQuote[]>([])
   const liveStats = useLiveChannel<CryptoGlobalStats>('crypto-global')
   const liveCoins = useLiveChannel<CryptoQuote[]>('crypto')
 
   useEffect(() => {
     getCryptoGlobalStats()
-      .then(setStats)
+      .then(setInitialStats)
       .catch(() => {})
     getCryptoQuotes()
-      .then((quotes) => setTopCoins(quotes.filter((q) => q.symbol === 'BTC' || q.symbol === 'ETH')))
+      .then((quotes) => setInitialTopCoins(quotes.filter((q) => q.symbol === 'BTC' || q.symbol === 'ETH')))
       .catch(() => {})
   }, [])
 
-  useEffect(() => {
-    if (liveStats) setStats(liveStats)
-  }, [liveStats])
-
-  useEffect(() => {
-    if (liveCoins) setTopCoins(liveCoins.filter((q) => q.symbol === 'BTC' || q.symbol === 'ETH'))
-  }, [liveCoins])
+  const stats = liveStats ?? initialStats
+  const topCoins = liveCoins ? liveCoins.filter((q) => q.symbol === 'BTC' || q.symbol === 'ETH') : initialTopCoins
 
   if (!stats) return null
 
@@ -239,23 +233,18 @@ function CryptoSummaryCard() {
 
 function FxCommodityCard() {
   const { t } = useTranslation('market')
-  const [fx, setFx] = useState<FxQuote[]>([])
-  const [commodities, setCommodities] = useState<TickerStripQuote[]>([])
+  const [initialFx, setInitialFx] = useState<FxQuote[]>([])
+  const [initialCommodities, setInitialCommodities] = useState<TickerStripQuote[]>([])
   const liveFx = useLiveChannel<FxQuote[]>('fx')
   const liveCommodities = useLiveChannel<TickerStripQuote[]>('commodities')
 
   useEffect(() => {
-    getFxQuotes().then(setFx).catch(() => {})
-    getCommodities().then(setCommodities).catch(() => {})
+    getFxQuotes().then(setInitialFx).catch(() => {})
+    getCommodities().then(setInitialCommodities).catch(() => {})
   }, [])
 
-  useEffect(() => {
-    if (liveFx) setFx(liveFx)
-  }, [liveFx])
-
-  useEffect(() => {
-    if (liveCommodities) setCommodities(liveCommodities)
-  }, [liveCommodities])
+  const fx = liveFx ?? initialFx
+  const commodities = liveCommodities ?? initialCommodities
 
   const usdTry = fx.find((f) => f.pair === 'USDTRY=X')
 
