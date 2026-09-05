@@ -4,7 +4,11 @@ services:
     runtime: python
     plan: free
     rootDir: backend
-    buildCommand: pip install -r requirements.txt
+    # pip/setuptools upgraded first — the versions bundled with a base Python image
+    # routinely lag behind and accumulate their own known CVEs (pip-audit flagged
+    # several against the versions this pin's Python 3.11.9 image ships), and this is
+    # cheap to do on every build rather than depending on a full image refresh.
+    buildCommand: pip install --upgrade pip setuptools && pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     # Liveness endpoint (no DB / no external calls — see main.py). Render polls this
     # during a deploy and only shifts traffic to the new instance once it returns
