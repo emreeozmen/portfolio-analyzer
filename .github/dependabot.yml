@@ -1,0 +1,24 @@
+version: 2
+updates:
+  # Backend (pip) — requirements.txt lives in backend/
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+
+  # Frontend (npm)
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+
+  # The GitHub Actions workflows themselves (ci.yml, db-backup.yml, keep-alive.yml) —
+  # a pinned action version can carry its own known vulnerabilities same as any other
+  # dependency, and this is the only mechanism that keeps those current.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
