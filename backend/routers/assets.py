@@ -1,7 +1,7 @@
 import asyncio
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, ConfigDict
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -44,10 +44,13 @@ class SymbolSearchResult(BaseModel):
 
 
 class TrackAssetRequest(BaseModel):
-    yahoo_symbol: str
-    ticker: str
-    name: str
-    exchange: str | None = None
+    # ticker/name/exchange are re-verified server-side (see track_asset below) rather
+    # than trusted as-is, but yahoo_symbol still feeds a Yahoo Finance lookup directly —
+    # capped so an oversized string can't be used to abuse that call.
+    yahoo_symbol: str = Field(max_length=30)
+    ticker: str = Field(max_length=30)
+    name: str = Field(max_length=200)
+    exchange: str | None = Field(default=None, max_length=50)
 
 
 @router.get("", response_model=list[AssetResponse])
@@ -64,7 +67,9 @@ def get_asset_quotes(db: Session = Depends(get_db), current_user: User | None = 
     "/search", response_model=list[SymbolSearchResult], dependencies=[Depends(rate_limit.throttle(30, 60))]
 )
 def search_assets(
-    q: str, db: Session = Depends(get_db), current_user: User | None = Depends(get_current_user_optional)
+    q: str = Query(max_length=100),
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_current_user_optional),
 ):
     query = q.strip()
     if not query:

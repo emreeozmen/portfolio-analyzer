@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
-from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -31,6 +31,11 @@ def _send_verification_email(user: User) -> None:
 oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="auth/login", auto_error=False)
 
 PASSWORD_MIN_LENGTH = 8
+# bcrypt only ever looks at a password's first 72 bytes, so anything past that adds no
+# real strength — capping input length here also means a client can't send a
+# multi-megabyte "password" string just to burn CPU/memory before hashing even starts.
+PASSWORD_MAX_LENGTH = 128
+EMAIL_MAX_LENGTH = 254  # RFC 5321's own limit on a full email address
 ALLOWED_BASE_CURRENCIES = {"TRY", "USD", "EUR", "GBP"}
 ALLOWED_DIGEST_FREQUENCIES = {"off", "weekly", "monthly"}
 
@@ -38,6 +43,8 @@ ALLOWED_DIGEST_FREQUENCIES = {"off", "weekly", "monthly"}
 def _validate_password_strength(value: str) -> str:
     if len(value) < PASSWORD_MIN_LENGTH:
         raise ValueError(f"Şifre en az {PASSWORD_MIN_LENGTH} karakter olmalıdır")
+    if len(value) > PASSWORD_MAX_LENGTH:
+        raise ValueError(f"Şifre en fazla {PASSWORD_MAX_LENGTH} karakter olabilir")
     if not re.search(r"[A-Za-z]", value):
         raise ValueError("Şifre en az bir harf içermelidir")
     if not re.search(r"\d", value):
@@ -52,8 +59,8 @@ def _client_info(request: Request) -> tuple[str | None, str | None]:
 
 
 class RegisterRequest(BaseModel):
-    email: EmailStr
-    password: str
+    email: EmailStr = Field(max_length=EMAIL_MAX_LENGTH)
+    password: str = Field(max_length=PASSWORD_MAX_LENGTH)
 
     @field_validator("password")
     @classmethod
@@ -62,8 +69,8 @@ class RegisterRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
+    email: EmailStr = Field(max_length=EMAIL_MAX_LENGTH)
+    password: str = Field(max_length=PASSWORD_MAX_LENGTH)
 
 
 class TokenResponse(BaseModel):
@@ -118,8 +125,8 @@ class UpdateCurrencyRequest(BaseModel):
 
 
 class UpdatePasswordRequest(BaseModel):
-    current_password: str
-    new_password: str
+    current_password: str = Field(max_length=PASSWORD_MAX_LENGTH)
+    new_password: str = Field(max_length=PASSWORD_MAX_LENGTH)
 
     @field_validator("new_password")
     @classmethod
@@ -128,8 +135,8 @@ class UpdatePasswordRequest(BaseModel):
 
 
 class UpdateEmailRequest(BaseModel):
-    new_email: EmailStr
-    current_password: str
+    new_email: EmailStr = Field(max_length=EMAIL_MAX_LENGTH)
+    current_password: str = Field(max_length=PASSWORD_MAX_LENGTH)
 
 
 class TwoFactorSetupResponse(BaseModel):
@@ -138,17 +145,17 @@ class TwoFactorSetupResponse(BaseModel):
 
 
 class TwoFactorEnableRequest(BaseModel):
-    code: str
+    code: str = Field(max_length=10)
 
 
 class TwoFactorDisableRequest(BaseModel):
-    password: str
-    code: str
+    password: str = Field(max_length=PASSWORD_MAX_LENGTH)
+    code: str = Field(max_length=10)
 
 
 class TwoFactorVerifyRequest(BaseModel):
-    challenge_token: str
-    code: str
+    challenge_token: str = Field(max_length=2000)
+    code: str = Field(max_length=10)
 
 
 class SessionResponse(BaseModel):
@@ -188,7 +195,16 @@ def register(payload: RegisterRequest, request: Request, db: Session = Depends(g
     return TokenResponse(access_token=auth_service.issue_token_for_user(db, user, user_agent, ip_address))
 
 
-@router.post("/login", response_model=LoginResponse)
+@router.post(
+    "/login",
+    response_model=LoginResponse,
+    # The email-keyed lockout below (is_locked_out/record_failed_attempt) only ever
+    # blocks repeated guesses against one email — it does nothing to slow an attacker
+    # spraying a single common password across many different email addresses from
+    # one IP. This IP-keyed throttle is the defense for that case; both apply
+    # independently.
+    dependencies=[Depends(rate_limit.throttle(20, 300))],
+)
 def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)):
     locked_seconds = rate_limit.is_locked_out(payload.email)
     if locked_seconds > 0:

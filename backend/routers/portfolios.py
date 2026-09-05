@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -34,15 +34,15 @@ def _load_portfolio_series(db: Session, portfolio: Portfolio) -> tuple[dict, dic
 
 
 class PortfolioAssetInput(BaseModel):
-    ticker: str
+    ticker: str = Field(max_length=30)
     weight: float
 
 
 class PortfolioCreate(BaseModel):
-    name: str
-    assets: list[PortfolioAssetInput]
-    benchmark_symbol: str | None = None
-    benchmark_label: str | None = None
+    name: str = Field(max_length=100)
+    assets: list[PortfolioAssetInput] = Field(max_length=100)
+    benchmark_symbol: str | None = Field(default=None, max_length=30)
+    benchmark_label: str | None = Field(default=None, max_length=100)
 
 
 class PortfolioResponse(BaseModel):
