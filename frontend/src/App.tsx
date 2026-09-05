@@ -28,6 +28,7 @@ const TaxReportPage = lazy(() => import('./pages/TaxReport'))
 const PublicPortfolioPage = lazy(() => import('./pages/PublicPortfolio'))
 const AdminUsersPage = lazy(() => import('./pages/AdminUsers'))
 const VerifyEmailPage = lazy(() => import('./pages/VerifyEmail'))
+const ResetPasswordPage = lazy(() => import('./pages/ResetPassword'))
 
 function RouteFallback() {
   const { t } = useTranslation('common')
@@ -94,6 +95,7 @@ function AppRoutes({
             />
             <Route path="/paylasilan/:token" element={<PublicPortfolioPage />} />
             <Route path="/dogrula" element={<VerifyEmailPage />} />
+            <Route path="/sifre-sifirla" element={<ResetPasswordPage />} />
             <Route
               path="/admin/kullanicilar"
               element={token ? <AdminUsersPage /> : <LoginForm onAuthenticated={onAuthenticated} sessionExpired={sessionExpired} />}

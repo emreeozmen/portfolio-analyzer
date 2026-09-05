@@ -158,6 +158,20 @@ class TwoFactorVerifyRequest(BaseModel):
     code: str = Field(max_length=10)
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr = Field(max_length=EMAIL_MAX_LENGTH)
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(max_length=2000)
+    new_password: str = Field(max_length=PASSWORD_MAX_LENGTH)
+
+    @field_validator("new_password")
+    @classmethod
+    def password_strength(cls, value: str) -> str:
+        return _validate_password_strength(value)
+
+
 class SessionResponse(BaseModel):
     id: int
     user_agent: str | None
@@ -244,6 +258,56 @@ def verify_2fa(payload: TwoFactorVerifyRequest, request: Request, db: Session = 
     user_agent, ip_address = _client_info(request)
     token = auth_service.issue_token_for_user(db, user, user_agent, ip_address)
     return TokenResponse(access_token=token)
+
+
+@router.post(
+    "/forgot-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(rate_limit.throttle(5, 900))],
+)
+def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """Always responds 204 whether or not the email is registered — unlike /register
+    (which has to tell its own caller "that email's taken" for its UX to work at all),
+    this endpoint has no legitimate reason to confirm account existence, so it never
+    does. The reset email itself is only actually sent (best-effort, a no-op if SMTP
+    isn't configured — see email_service.is_configured) when a matching account is
+    found.
+    """
+    user = auth_service.get_user_by_email(db, payload.email)
+    if user is not None:
+        token = auth_service.issue_password_reset_token(user)
+        frontend_base = settings.cors_origins_list[0] if settings.cors_origins_list else "http://localhost:5173"
+        reset_url = f"{frontend_base}/sifre-sifirla?token={token}"
+        email_service.send_password_reset_email(user.email, reset_url)
+
+
+@router.post(
+    "/reset-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(rate_limit.throttle(10, 900))],
+)
+def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db), lang: str = Depends(get_lang)):
+    try:
+        user_id, pwd_fp = auth_service.decode_password_reset_token(payload.token)
+    except (jwt.PyJWTError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=localize("Geçersiz veya süresi dolmuş bağlantı", lang),
+        ) from exc
+
+    user = db.get(User, user_id)
+    if user is None or auth_service.password_fingerprint(user.hashed_password) != pwd_fp:
+        # Same message for "no such user" and "token already used/stale" — both are a
+        # dead link from the caller's point of view, and distinguishing them would leak
+        # nothing useful anyway (the fingerprint mismatch case means the account's
+        # password already changed since this link was issued).
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=localize("Geçersiz veya süresi dolmuş bağlantı", lang),
+        )
+
+    auth_service.reset_password(db, user, payload.new_password)
+    audit_service.log_action(db, user.id, "password.reset")
 
 
 def get_current_user_and_session(

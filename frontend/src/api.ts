@@ -404,6 +404,27 @@ export async function login(email: string, password: string): Promise<LoginResul
   return res.json()
 }
 
+export async function forgotPassword(email: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Lang': i18n.language },
+    body: JSON.stringify({ email }),
+  })
+  // Deliberately no distinguishing error surfaced for "email not found" — the backend
+  // itself always responds 204 regardless (see routers/auth.py's forgot_password), so
+  // a non-ok response here means something actually went wrong (rate limit, network).
+  if (!res.ok) throw new Error(await parseErrorDetail(res, 'Failed to request password reset'))
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Lang': i18n.language },
+    body: JSON.stringify({ token, new_password: newPassword }),
+  })
+  if (!res.ok) throw new Error(await parseErrorDetail(res, 'Failed to reset password'))
+}
+
 export async function verifyTwoFactor(challengeToken: string, code: string): Promise<TokenResponse> {
   const res = await fetch(`${API_BASE}/auth/2fa/verify`, {
     method: 'POST',

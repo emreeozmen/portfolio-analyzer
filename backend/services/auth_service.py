@@ -1,4 +1,5 @@
 import base64
+import hashlib
 import io
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -16,6 +17,7 @@ TOTP_ISSUER = "Portfolio Analyzer"
 TWO_FA_CHALLENGE_EXPIRE_MINUTES = 5
 SESSION_TOUCH_INTERVAL = timedelta(minutes=5)
 EMAIL_VERIFICATION_EXPIRE_HOURS = 24
+PASSWORD_RESET_EXPIRE_MINUTES = 30
 
 
 def hash_password(password: str) -> str:
@@ -109,6 +111,50 @@ def decode_email_verification_token(token: str) -> int:
     if payload.get("purpose") != "email_verify":
         raise ValueError("Not an email verification token")
     return int(payload["sub"])
+
+
+def password_fingerprint(hashed_password: str) -> str:
+    """A short, non-reversible fingerprint of a password hash, embedded in a
+    password-reset token (see issue_password_reset_token) so the token stops
+    validating the moment the password actually changes — without this, a reset link
+    would stay usable for its full expiry window even after being redeemed once, e.g.
+    if it leaked into a browser's history or an email got forwarded. This makes an
+    otherwise-stateless JWT effectively single-use with no separate DB table to track
+    used tokens.
+    """
+    return hashlib.sha256(hashed_password.encode()).hexdigest()[:16]
+
+
+def issue_password_reset_token(user: User) -> str:
+    return _encode_token(
+        {"sub": str(user.id), "purpose": "password_reset", "pwd_fp": password_fingerprint(user.hashed_password)},
+        timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES),
+    )
+
+
+def decode_password_reset_token(token: str) -> tuple[int, str]:
+    """Returns (user_id, password_fingerprint) — the caller still has to look up the
+    user and compare the fingerprint against their *current* hashed_password (see
+    password_fingerprint's docstring); this only confirms the token is well-formed,
+    unexpired, and actually a password-reset token."""
+    payload = _decode_token(token)
+    if payload.get("purpose") != "password_reset" or "pwd_fp" not in payload:
+        raise ValueError("Not a password reset token")
+    return int(payload["sub"]), payload["pwd_fp"]
+
+
+def reset_password(db: Session, user: User, new_password: str) -> None:
+    """Used by the forgot-password flow, where there's no current password to verify
+    (unlike update_password). Also revokes every active session on the account — a
+    password reset is exactly the moment an account may have been compromised (or the
+    user simply lost access across devices), so a session issued under the old
+    password shouldn't silently keep working after this.
+    """
+    user.hashed_password = hash_password(new_password)
+    db.query(UserSession).filter(UserSession.user_id == user.id, UserSession.revoked_at.is_(None)).update(
+        {"revoked_at": datetime.now(timezone.utc)}
+    )
+    db.commit()
 
 
 def generate_totp_secret() -> str:

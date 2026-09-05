@@ -28,7 +28,7 @@ def _verify_portfolio_ownership(db: Session, user_id: int, portfolio_id: int | N
         raise HTTPException(status_code=404, detail="Portfolio not found")
 
 
-def _validate_holding_numbers(quantity: float, price: float) -> None:
+def _validate_holding_numbers(quantity: float, price: float, lang: str) -> None:
     """A zero/negative quantity or negative price has no real-world meaning for a
     position and would otherwise silently corrupt cost-basis/valuation math downstream
     — enforced here rather than as a Field() constraint on HoldingCreate so it applies
@@ -36,9 +36,9 @@ def _validate_holding_numbers(quantity: float, price: float) -> None:
     serializing an already-stored row back out.
     """
     if quantity <= 0:
-        raise HTTPException(status_code=400, detail="Miktar sıfırdan büyük olmalıdır")
+        raise HTTPException(status_code=400, detail=localize("Miktar sıfırdan büyük olmalıdır", lang))
     if price < 0:
-        raise HTTPException(status_code=400, detail="Fiyat negatif olamaz")
+        raise HTTPException(status_code=400, detail=localize("Fiyat negatif olamaz", lang))
 
 
 class HoldingCreate(BaseModel):
@@ -235,9 +235,10 @@ def create_holding(
     payload: HoldingCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    lang: str = Depends(get_lang),
 ):
     _verify_portfolio_ownership(db, current_user.id, payload.portfolio_id)
-    _validate_holding_numbers(payload.quantity, payload.purchase_price)
+    _validate_holding_numbers(payload.quantity, payload.purchase_price, lang)
     return portfolio_service.add_holding(
         db,
         user_id=current_user.id,
@@ -255,9 +256,10 @@ def update_holding(
     payload: HoldingCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    lang: str = Depends(get_lang),
 ):
     _verify_portfolio_ownership(db, current_user.id, payload.portfolio_id)
-    _validate_holding_numbers(payload.quantity, payload.purchase_price)
+    _validate_holding_numbers(payload.quantity, payload.purchase_price, lang)
     updated = portfolio_service.update_holding(
         db,
         user_id=current_user.id,
@@ -292,7 +294,7 @@ def sell_holding(
     lang: str = Depends(get_lang),
 ):
     _verify_portfolio_ownership(db, current_user.id, payload.portfolio_id)
-    _validate_holding_numbers(payload.quantity, payload.sale_price)
+    _validate_holding_numbers(payload.quantity, payload.sale_price, lang)
     try:
         return portfolio_service.sell_holding(
             db,

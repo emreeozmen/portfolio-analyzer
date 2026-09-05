@@ -111,6 +111,29 @@ def send_verification_email(to_address: str, verify_url: str) -> bool:
     return send_email(to_address, subject, body, html_body)
 
 
+def send_password_reset_email(to_address: str, reset_url: str) -> bool:
+    subject = "[Portföy Analiz] Şifre sıfırlama isteği"
+    intro = (
+        "Hesabınız için bir şifre sıfırlama isteği aldık. Şifrenizi sıfırlamak için "
+        "aşağıdaki bağlantıya tıklayın."
+    )
+    body = (
+        f"{intro}\n\n{reset_url}\n\nBu bağlantı 30 dakika içinde geçerliliğini yitirir.\n\n"
+        "Bu isteği siz yapmadıysanız bu e-postayı yok sayabilirsiniz; hesabınızda hiçbir "
+        "değişiklik yapılmayacaktır."
+    )
+    body_html = (
+        f'<p style="margin:0 0 20px;"><a href="{html.escape(reset_url)}" '
+        f'style="display:inline-block;background:#c9a15f;color:#0a0e14;text-decoration:none;'
+        f'font-weight:600;font-size:14px;padding:12px 24px;border-radius:6px;">Şifremi Sıfırla</a></p>'
+        f'<p style="margin:0;font-size:12px;color:#888;">Bağlantı 30 dakika içinde geçerliliğini yitirir. '
+        f'Bu isteği siz yapmadıysanız bu e-postayı yok sayabilirsiniz; hesabınızda hiçbir '
+        f'değişiklik yapılmayacaktır.</p>'
+    )
+    html_body = _render_email_shell("Şifreni Sıfırla", intro, body_html)
+    return send_email(to_address, subject, body, html_body)
+
+
 def send_alert_triggered_email(to_address: str, ticker: str, condition: str, threshold: float) -> bool:
     condition_labels = {
         "price_above": f"fiyat {threshold} üzerine çıktı",

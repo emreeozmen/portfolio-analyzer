@@ -59,6 +59,9 @@ ERROR_TRANSLATIONS: dict[str, str] = {
     "CSV dosyası boş veya okunamadı": "The CSV file is empty or couldn't be read",
     "Sembol boş olamaz": "Symbol cannot be empty",
     "Miktar ve fiyat pozitif olmalıdır": "Quantity and price must be positive",
+    "Geçersiz veya süresi dolmuş bağlantı": "This link is invalid or has expired",
+    "Miktar sıfırdan büyük olmalıdır": "Quantity must be greater than zero",
+    "Fiyat negatif olamaz": "Price cannot be negative",
 }
 
 
