@@ -22,4 +22,4 @@ pyotp==2.9.0
 qrcode[pil]==8.0
 redis==8.1.0
 fakeredis==2.37.1  # test-only — lets test_ws_redis_relay.py exercise the pub/sub relay without a real Redis server
-pywebpush==2.0.3  # Web Push (VAPID) — see services/push_service.py; pulls in py-vapid + cryptography
+pywebpush==2.5.0  # Web Push (VAPID) — see services/push_service.py; pulls in py-vapid + cryptography
