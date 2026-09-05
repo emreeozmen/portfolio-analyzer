@@ -18,7 +18,7 @@ yfinance==1.6.0
 requests==2.34.2
 sentry-sdk[fastapi]==2.68.0
 alembic==1.13.3
-pyotp==2.9.0
+pyotp==2.10.0
 qrcode[pil]==8.0
 redis==8.1.0
 fakeredis==2.37.1  # test-only — lets test_ws_redis_relay.py exercise the pub/sub relay without a real Redis server
