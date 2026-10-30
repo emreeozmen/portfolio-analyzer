@@ -1,5 +1,5 @@
-"""Unauthenticated, read-only routes reachable only by knowing an unguessable
-share token (see Portfolio.share_token / portfolio_builder_service.generate_share_link).
+"""Unauthenticated, read-only shared portfolios and fixed educational examples.
+User portfolios require an unguessable share token; demos use public default assets.
 Deliberately serves the exact same analysis payload the owner's own
 GET /portfolios/{id}/analysis does — no holdings, no cost basis, no other personal
 financial data lives in that payload to begin with, so exposing it without auth is
@@ -11,9 +11,20 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from i18n import get_lang, localize
-from services import portfolio_builder_service, rate_limit
+from services import demo_service, portfolio_builder_service, rate_limit
+from services.http_cache import cache_control
 
 router = APIRouter(prefix="/public", tags=["public"])
+
+
+@router.get("/demo-portfolios/{preset_id}", dependencies=[Depends(rate_limit.throttle(30, 60)), Depends(cache_control(60))])
+def get_demo_portfolio(preset_id: str, db: Session = Depends(get_db)):
+    if preset_id not in demo_service.PRESETS:
+        raise HTTPException(status_code=404, detail="Demo not found")
+    try:
+        return demo_service.get_demo_analysis(db, preset_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=503, detail="Demo price history is temporarily unavailable") from exc
 
 
 @router.get("/portfolios/{token}/analysis", dependencies=[Depends(rate_limit.throttle(30, 60))])

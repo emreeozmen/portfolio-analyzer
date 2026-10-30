@@ -219,6 +219,12 @@ export interface PortfolioAnalysis {
   benchmark: PortfolioIndexPoint[]
   sector_allocation: AllocationRow[]
   currency_allocation: AllocationRow[]
+  data_window?: {
+    start_date: string
+    end_date: string
+    observations: number
+    calculated_at: string
+  }
   summary: {
     total_return: number
     average_return: number
@@ -232,6 +238,22 @@ export interface PortfolioAnalysis {
     historical_var_95: number
     historical_cvar_95: number
   }
+}
+
+export const DEMO_PRESET_IDS = ['bist-five', 'us-tech', 'concentrated'] as const
+export type DemoPresetId = typeof DEMO_PRESET_IDS[number]
+export interface DemoPortfolioAnalysis extends PortfolioAnalysis {
+  preset_id: DemoPresetId
+  currency: string
+  educational: boolean
+}
+
+export async function getDemoPortfolio(preset: DemoPresetId): Promise<DemoPortfolioAnalysis> {
+  return cachedGet(`demo:${preset}`, async () => {
+    const response = await apiFetch(`${API_BASE}/public/demo-portfolios/${encodeURIComponent(preset)}`)
+    if (!response.ok) throw new Error(await parseErrorDetail(response, 'Demo unavailable'))
+    return response.json()
+  })
 }
 
 export interface WorstDrawdownPeriod {

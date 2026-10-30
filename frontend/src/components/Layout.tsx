@@ -61,6 +61,9 @@ function Layout({ isAuthenticated, onLogout, children }: LayoutProps) {
           <Link to="/" className={isActive('/')}>
             {t('nav.home')}
           </Link>
+          <Link to="/demo" className={isActive('/demo')}>
+            {t('demoNav')}
+          </Link>
           <Link to="/market" className={isActive('/market')}>
             {t('nav.market')}
           </Link>

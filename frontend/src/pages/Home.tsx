@@ -341,8 +341,8 @@ function Home() {
             </h1>
             <p className="lead">{t('hero.lead')}</p>
             <div className="hero-actions">
-              <Link to="/market" className="btn-primary">
-                {t('hero.marketBtn')}
+              <Link to="/demo" className="btn-primary">
+                {t('demoCta')}
               </Link>
               <Link to="/assets" className="btn-secondary">
                 {t('hero.assetsBtn')}

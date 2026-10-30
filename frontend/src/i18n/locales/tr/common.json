@@ -1,4 +1,5 @@
 {
+  "demoNav": "Demo",
   "dataLoading": "Veriler yükleniyor; sunucunun yanıt vermesi biraz sürebilir…",
   "dataEmpty": "Gösterilecek veri alınamadı.",
   "retryData": "Tekrar dene",
