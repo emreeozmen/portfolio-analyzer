@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getMarketNews, type NewsItem } from '../api'
 import { useLiveChannel } from '../lib/useLiveChannel'
+import { useRemoteData } from '../lib/useRemoteData'
+import DataNotice from './DataNotice'
 
 /** Real headlines from Yahoo Finance's own news feed (see backend `/markets/news` /
  * `market_data_provider.get_news`) — title, summary, publisher, and link are all real,
@@ -11,10 +12,9 @@ import { useLiveChannel } from '../lib/useLiveChannel'
  */
 function MarketNewsPanel() {
   const { t } = useTranslation('market')
-  const [initialItems, setInitialItems] = useState<NewsItem[]>([])
-  const [error, setError] = useState(false)
   const live = useLiveChannel<NewsItem[]>('news')
-  const items = live ?? initialItems
+  const request = useRemoteData<NewsItem[]>(getMarketNews, [], live)
+  const items = request.data
 
   const timeAgo = (isoDate: string | null): string => {
     if (!isoDate) return ''
@@ -28,13 +28,7 @@ function MarketNewsPanel() {
     return t('news.timeAgoDays', { days })
   }
 
-  useEffect(() => {
-    getMarketNews()
-      .then(setInitialItems)
-      .catch(() => setError(true))
-  }, [])
-
-  if (error || items.length === 0) return null
+  if (items.length === 0) return request.loading || request.error ? <DataNotice {...request} /> : null
 
   return (
     <section className="home-section">

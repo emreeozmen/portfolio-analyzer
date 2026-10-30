@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { currentLocale } from '../lib/locale'
@@ -18,6 +18,8 @@ import {
   type TickerStripQuote,
 } from '../api'
 import TickerAvatar from './TickerAvatar'
+import DataNotice from './DataNotice'
+import { useRemoteData } from '../lib/useRemoteData'
 import LineChart from '../charts/LineChart'
 import { useLiveChannel } from '../lib/useLiveChannel'
 import { formatSignedPercent as formatChange } from '../lib/currency'
@@ -50,34 +52,19 @@ function formatIndexValue(v: number): string {
 function HeroIndexCard() {
   const { t } = useTranslation('market')
   const rangeLabels = [...HERO_RANGE_LABELS, t('heroRanges.all')]
-  const [history, setHistory] = useState<IndexHistoryPoint[]>([])
-  const [initialStrip, setInitialStrip] = useState<TickerStripQuote[]>([])
   const [rangeIndex, setRangeIndex] = useState(HERO_RANGE_DAYS.length - 1)
-  const [error, setError] = useState(false)
   const liveStrip = useLiveChannel<TickerStripQuote[]>('ticker-strip')
 
-  useEffect(() => {
-    // The year of daily closes behind the chart is historical, not a live feed — fetched
-    // once. The current value/change badge, on the other hand, updates live below.
-    Promise.all([getBist100History(), getTickerStrip()])
-      .then(([h, s]) => {
-        setHistory(h)
-        setInitialStrip(s)
-      })
-      .catch(() => setError(true))
-  }, [])
-
-  // Prefer the live WebSocket value over the one-time initial fetch, without mirroring
-  // it into its own state — syncing a derived value via a second effect just costs an
-  // extra render pass every time a live tick arrives, for no benefit over deriving it
-  // directly during render.
-  const strip = liveStrip ?? initialStrip
+  const historyRequest = useRemoteData<IndexHistoryPoint[]>(getBist100History, [])
+  const stripRequest = useRemoteData<TickerStripQuote[]>(getTickerStrip, [], liveStrip)
+  const history = historyRequest.data
+  const strip = stripRequest.data
   const bist100 = strip.find((s) => s.symbol === 'XU100.IS')
 
   const days = HERO_RANGE_DAYS[rangeIndex]
   const sliced = Number.isFinite(days) ? history.slice(-days) : history
 
-  if (error || (history.length === 0 && !bist100)) return null
+  if (history.length === 0 && !bist100) return <DataNotice loading={historyRequest.loading || stripRequest.loading} error={historyRequest.error || stripRequest.error} reload={() => { historyRequest.reload(); stripRequest.reload() }} />
 
   return (
     <div className="market-overview-hero">
@@ -118,16 +105,11 @@ function HeroIndexCard() {
 
 function MajorIndicesCard() {
   const { t } = useTranslation('market')
-  const [initialIndices, setInitialIndices] = useState<TickerStripQuote[]>([])
   const live = useLiveChannel<TickerStripQuote[]>('indices')
 
-  useEffect(() => {
-    getMajorIndices().then(setInitialIndices).catch(() => {})
-  }, [])
-
-  const indices = live ?? initialIndices
-
-  if (indices.length === 0) return null
+  const request = useRemoteData<TickerStripQuote[]>(getMajorIndices, [], live)
+  const indices = request.data
+  if (indices.length === 0) return <DataNotice {...request} />
 
   return (
     <div className="market-overview-card">
@@ -155,28 +137,20 @@ function MajorIndicesCard() {
 
 function CryptoSummaryCard() {
   const { t } = useTranslation('market')
-  const [initialStats, setInitialStats] = useState<CryptoGlobalStats | null>(null)
-  const [initialTopCoins, setInitialTopCoins] = useState<CryptoQuote[]>([])
   const liveStats = useLiveChannel<CryptoGlobalStats>('crypto-global')
   const liveCoins = useLiveChannel<CryptoQuote[]>('crypto')
 
-  useEffect(() => {
-    getCryptoGlobalStats()
-      .then(setInitialStats)
-      .catch(() => {})
-    getCryptoQuotes()
-      .then((quotes) => setInitialTopCoins(quotes.filter((q) => q.symbol === 'BTC' || q.symbol === 'ETH')))
-      .catch(() => {})
-  }, [])
+  const statsRequest = useRemoteData<CryptoGlobalStats | null>(getCryptoGlobalStats, null, liveStats)
+  const coinsRequest = useRemoteData<CryptoQuote[]>(getCryptoQuotes, [], liveCoins)
+  const stats = statsRequest.data
+  const topCoins = coinsRequest.data.filter((q) => q.symbol === 'BTC' || q.symbol === 'ETH')
 
-  const stats = liveStats ?? initialStats
-  const topCoins = liveCoins ? liveCoins.filter((q) => q.symbol === 'BTC' || q.symbol === 'ETH') : initialTopCoins
-
-  if (!stats) return null
+  if (!stats && topCoins.length === 0) return <DataNotice {...statsRequest} />
 
   return (
     <div className="market-overview-card">
       <h3>{t('crypto.title')}</h3>
+      {stats ? <>
       <div className="market-overview-hero-price-row" style={{ marginBottom: 4 }}>
         <span className="market-overview-hero-price mono" style={{ fontSize: 22 }}>
           {formatCompactUsd(stats.total_market_cap_usd)}
@@ -210,6 +184,7 @@ function CryptoSummaryCard() {
         <span><span className="dominance-dot is-eth" />ETH {stats.eth_dominance.toFixed(1)}%</span>
         <span><span className="dominance-dot is-others" />{t('crypto.other')} {stats.others_dominance.toFixed(1)}%</span>
       </div>
+      </> : <DataNotice {...statsRequest} />}
 
       {topCoins.length > 0 && (
         <ul className="market-overview-list" style={{ marginTop: 14 }}>
@@ -233,22 +208,17 @@ function CryptoSummaryCard() {
 
 function FxCommodityCard() {
   const { t } = useTranslation('market')
-  const [initialFx, setInitialFx] = useState<FxQuote[]>([])
-  const [initialCommodities, setInitialCommodities] = useState<TickerStripQuote[]>([])
   const liveFx = useLiveChannel<FxQuote[]>('fx')
   const liveCommodities = useLiveChannel<TickerStripQuote[]>('commodities')
 
-  useEffect(() => {
-    getFxQuotes().then(setInitialFx).catch(() => {})
-    getCommodities().then(setInitialCommodities).catch(() => {})
-  }, [])
-
-  const fx = liveFx ?? initialFx
-  const commodities = liveCommodities ?? initialCommodities
+  const fxRequest = useRemoteData<FxQuote[]>(getFxQuotes, [], liveFx)
+  const commoditiesRequest = useRemoteData<TickerStripQuote[]>(getCommodities, [], liveCommodities)
+  const fx = fxRequest.data
+  const commodities = commoditiesRequest.data
 
   const usdTry = fx.find((f) => f.pair === 'USDTRY=X')
 
-  if (!usdTry && commodities.length === 0) return null
+  if (!usdTry && commodities.length === 0) return <DataNotice loading={fxRequest.loading || commoditiesRequest.loading} error={fxRequest.error || commoditiesRequest.error} reload={() => { fxRequest.reload(); commoditiesRequest.reload() }} />
 
   return (
     <div className="market-overview-card">
@@ -283,18 +253,9 @@ function FxCommodityCard() {
 
 function MacroCard() {
   const { t } = useTranslation('market')
-  const [inflation, setInflation] = useState<{ value: number; year: number } | null>(null)
-
-  useEffect(() => {
-    getInflationByCountry()
-      .then((rows) => {
-        const tr = rows.find((r) => r.country_code === 'TUR')
-        if (tr) setInflation({ value: tr.value, year: tr.year })
-      })
-      .catch(() => {})
-  }, [])
-
-  if (!inflation) return null
+  const request = useRemoteData(getInflationByCountry, [])
+  const inflation = request.data.find((row) => row.country_code === 'TUR')
+  if (!inflation) return <DataNotice {...request} />
 
   return (
     <div className="market-overview-card">
