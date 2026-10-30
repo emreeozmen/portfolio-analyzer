@@ -351,6 +351,9 @@ function Home() {
                 {t('hero.portfolioBtn')}
               </Link>
             </div>
+            <a href="#market-news" className="hero-live-card-link" style={{ display: 'inline-block', marginTop: 18 }}>
+              {t('newsCta')} ↓
+            </a>
           </div>
 
           <div className="hero-visual">

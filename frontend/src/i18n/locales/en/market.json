@@ -60,6 +60,8 @@
     "comparisonEmpty": "Select at least one asset to compare."
   },
   "news": {
+    "empty": "No headlines could be retrieved from the news sources right now. Try again shortly.",
+    "retry": "Reload news",
     "title": "Market News",
     "timeAgoJustNow": "just now",
     "timeAgoMinutes": "{{minutes}}m ago",

@@ -60,6 +60,8 @@
     "comparisonEmpty": "Karşılaştırmak için en az bir varlık seçin."
   },
   "news": {
+    "empty": "Haber kaynaklarından şu anda yeni başlık alınamadı. Biraz sonra tekrar deneyebilirsin.",
+    "retry": "Haberleri tekrar yükle",
     "title": "Piyasa Haberleri",
     "timeAgoJustNow": "az önce",
     "timeAgoMinutes": "{{minutes}} dk önce",

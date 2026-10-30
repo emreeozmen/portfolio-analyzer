@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from services import market_data_provider, worldbank_service
+from services import market_data_provider, news_service, worldbank_service
 from services.http_cache import cache_control
 
 router = APIRouter(prefix="/markets", tags=["markets"])
@@ -333,12 +333,16 @@ def get_bist100_history():
 
 
 def compute_market_news() -> list[dict]:
-    """Real headlines aggregated across NEWS_SYMBOLS (see market_data_provider.get_news
+    """Short economy-feed headlines, with Yahoo Finance as a fallback. Yahoo items
+    are aggregated across NEWS_SYMBOLS (see market_data_provider.get_news
     for what's real vs. omitted). The same story is often carried under more than one
     symbol (e.g. a general "stock market today" piece shows up for both an index and a
     crypto symbol) — deduped by id, then by title as a fallback since Yahoo doesn't
     always reuse the same id for a syndicated story. Sorted newest first.
     """
+    rss_items = news_service.get_rss_news()
+    if rss_items:
+        return rss_items
     with ThreadPoolExecutor(max_workers=8) as pool:
         results = list(pool.map(market_data_provider.get_news, NEWS_SYMBOLS))
 
@@ -354,10 +358,12 @@ def compute_market_news() -> list[dict]:
             merged.append(item)
 
     merged.sort(key=lambda x: x["published_at"] or "", reverse=True)
+    if not merged:
+        raise HTTPException(status_code=503, detail="News temporarily unavailable", headers={"Retry-After": "30"})
     return merged[:12]
 
 
-@router.get("/news", response_model=list[NewsItem], dependencies=[Depends(cache_control(900))])
+@router.get("/news", response_model=list[NewsItem], dependencies=[Depends(cache_control(300))])
 def get_market_news():
     return compute_market_news()
 
