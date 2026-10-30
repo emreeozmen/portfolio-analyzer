@@ -28,12 +28,14 @@ from services import redis_client
 logger = logging.getLogger("uvicorn.error")
 
 REDIS_PUBSUB_CHANNEL = "pa:ws:broadcast"
+SEND_TIMEOUT_SECONDS = 5
 
 
 @dataclass
 class _ConnectionState:
     user_id: int | None
     channels: set[str] = field(default_factory=set)
+    send_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
 
 class ConnectionManager:
@@ -103,15 +105,24 @@ class ConnectionManager:
     async def _send_to(self, channel: str, data: Any, predicate) -> None:
         message = {"channel": channel, "data": data}
         async with self._lock:
-            targets = [ws for ws, state in self._connections.items() if channel in state.channels and predicate(state)]
-        dead: list[WebSocket] = []
-        for ws in targets:
+            targets = [(ws, state) for ws, state in self._connections.items() if channel in state.channels and predicate(state)]
+
+        async def send(ws, state):
             try:
-                await ws.send_json(message)
+                # Bound both lock contention and network backpressure. Concurrent
+                # broadcasts must never write to the same socket at the same time.
+                async with asyncio.timeout(SEND_TIMEOUT_SECONDS):
+                    async with state.send_lock:
+                        await ws.send_json(message)
             except Exception:
-                dead.append(ws)
-        for ws in dead:
-            await self.disconnect(ws)
+                await self.disconnect(ws)
+                try:
+                    await asyncio.wait_for(ws.close(code=1013), timeout=SEND_TIMEOUT_SECONDS)
+                except Exception:
+                    pass
+
+        # A suspended browser must not prevent healthy clients receiving updates.
+        await asyncio.gather(*(send(ws, state) for ws, state in targets))
 
 
 manager = ConnectionManager()

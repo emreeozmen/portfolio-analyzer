@@ -16,7 +16,7 @@ from sqlalchemy import text
 from config import settings
 from database import Base, SessionLocal, engine, run_light_migrations
 from i18n import ERROR_TRANSLATIONS, get_lang
-from models import User
+from models import Asset, User
 from routers import alerts, assets, auth, holdings, markets, portfolios, public, push, ws
 from services import (
     alert_service,
@@ -91,6 +91,60 @@ NEWS_BROADCAST_INTERVAL_SECONDS = 5 * 60
 DIGEST_CHECK_INTERVAL_SECONDS = 6 * 60 * 60
 
 
+def _tracked_assets() -> list[tuple[int, str]]:
+    with SessionLocal() as db:
+        return [(asset.id, asset.ticker) for asset in asset_service.list_assets(db)]
+
+
+def _refresh_asset(asset_id: int) -> list[dict]:
+    # A session and all its ORM objects stay in this worker thread. commit()
+    # expires ORM attributes: reading them later on the event loop would otherwise
+    # perform synchronous database I/O and stall every request on this worker.
+    # A fresh session also isolates a failed transaction to this asset.
+    with SessionLocal() as db:
+        asset = db.get(Asset, asset_id)
+        if asset is None:
+            return []
+        price_service.refresh_price_history(db, asset)
+        triggered = alert_service.check_alerts_for_asset(db, asset.id)
+        notifications = [
+            {
+                "user_id": alert.user_id,
+                "payload": {
+                    "id": alert.id,
+                    "ticker": asset.ticker,
+                    "condition": alert.condition,
+                    "threshold": alert.threshold,
+                    "triggered_at": alert.triggered_at.isoformat(),
+                },
+            }
+            for alert in triggered
+        ]
+        for notification in notifications:
+            user_id = notification["user_id"]
+            payload = notification["payload"]
+            try:
+                alert_user = db.get(User, user_id)
+                if alert_user and alert_user.email_alerts_enabled:
+                    email_service.send_alert_triggered_email(
+                        alert_user.email, payload["ticker"], payload["condition"], payload["threshold"]
+                    )
+                if push_service.is_configured():
+                    push_service.send_alert_push(
+                        db, user_id, payload["ticker"], payload["condition"], payload["threshold"]
+                    )
+            except Exception as exc:
+                db.rollback()
+                logger.warning("alert delivery failed for user %s: %s", user_id, exc)
+                sentry_sdk.capture_exception(exc)
+        return notifications
+
+
+def _latest_refresh_quotes() -> list[dict]:
+    with SessionLocal() as db:
+        return price_service.get_latest_quotes(db, asset_service.list_assets(db))
+
+
 async def _auto_refresh_loop() -> None:
     """Refreshes every tracked asset's price history, checks its alerts, and pushes
     both out over WebSocket — quotes as one batched "quotes" message so a client
@@ -100,65 +154,29 @@ async def _auto_refresh_loop() -> None:
     """
     while True:
         await asyncio.sleep(AUTO_REFRESH_INTERVAL_SECONDS)
-        db = SessionLocal()
         try:
-            assets_list = await asyncio.to_thread(asset_service.list_assets, db)
+            assets_list = await asyncio.to_thread(_tracked_assets)
             any_refreshed = False
-            for asset in assets_list:
+            for asset_id, ticker in assets_list:
                 try:
-                    # Both calls are blocking (yfinance HTTP, DB query) — offloaded to a
-                    # worker thread, same reasoning as _market_data_broadcast_loop, so
-                    # this loop doesn't stall request/WebSocket handling while it runs.
-                    await asyncio.to_thread(price_service.refresh_price_history, db, asset)
+                    notifications = await asyncio.to_thread(_refresh_asset, asset_id)
                     any_refreshed = True
-                    triggered = await asyncio.to_thread(alert_service.check_alerts_for_asset, db, asset.id)
-                    for alert in triggered:
+                    for notification in notifications:
                         await ws_manager.manager.send_to_user(
-                            alert.user_id,
+                            notification["user_id"],
                             "alerts",
-                            {
-                                "id": alert.id,
-                                "ticker": asset.ticker,
-                                "condition": alert.condition,
-                                "threshold": alert.threshold,
-                                "triggered_at": alert.triggered_at.isoformat(),
-                            },
+                            notification["payload"],
                         )
-                        # Email is a best-effort addition on top of the WebSocket push
-                        # above, not a replacement — the alert already landed in-app
-                        # regardless of whether SMTP is configured or this send fails.
-                        alert_user = await asyncio.to_thread(db.get, User, alert.user_id)
-                        if alert_user and alert_user.email_alerts_enabled:
-                            await asyncio.to_thread(
-                                email_service.send_alert_triggered_email,
-                                alert_user.email,
-                                asset.ticker,
-                                alert.condition,
-                                alert.threshold,
-                            )
-                        # Same best-effort addition as email above — a triggered
-                        # alert already landed in-app/email regardless of whether
-                        # push is configured or this send fails. No per-user flag
-                        # to check: a PushSubscription row's existence is itself
-                        # "push enabled for this device" (see push_service.py).
-                        if push_service.is_configured():
-                            await asyncio.to_thread(
-                                push_service.send_alert_push,
-                                db,
-                                alert.user_id,
-                                asset.ticker,
-                                alert.condition,
-                                alert.threshold,
-                            )
                 except Exception as exc:
                     # Broad on purpose: a Yahoo Finance rate-limit/network error for one
                     # asset is not a ValueError, and letting it propagate out of this
                     # per-asset try would abort the whole tick's refresh (and quotes
                     # broadcast) for every other asset too — see the interval comment above.
-                    logger.warning("auto-refresh failed for %s: %s", asset.ticker, exc)
+                    logger.warning("auto-refresh failed for %s: %s", ticker, exc)
+                    sentry_sdk.capture_exception(exc)
 
             if any_refreshed:
-                quotes = await asyncio.to_thread(price_service.get_latest_quotes, db, assets_list)
+                quotes = await asyncio.to_thread(_latest_refresh_quotes)
                 await ws_manager.manager.broadcast("quotes", quotes)
                 # Portfolio/holdings valuation is expensive to recompute (correlation
                 # matrices, Monte Carlo, ...) — rather than push the full computed
@@ -176,8 +194,6 @@ async def _auto_refresh_loop() -> None:
             # explicit capture_exception here.
             logger.exception("auto-refresh loop iteration failed: %s", exc)
             sentry_sdk.capture_exception(exc)
-        finally:
-            db.close()
 
 
 async def _market_data_broadcast_loop() -> None:
@@ -220,6 +236,29 @@ async def _news_broadcast_loop() -> None:
             sentry_sdk.capture_exception(exc)
 
 
+def _send_due_digests() -> None:
+    # Keep expired ORM attribute loads, commit/rollback and close off the event
+    # loop too, not just the explicit queries and SMTP calls.
+    with SessionLocal() as db:
+        for frequency, label in digest_service.FREQUENCY_LABELS.items():
+            user_ids = [user.id for user in digest_service.users_due_for_digest(db, frequency)]
+            for user_id in user_ids:
+                try:
+                    user = db.get(User, user_id)
+                    if user is None:
+                        continue
+                    content = digest_service.build_digest_content(db, user, frequency)
+                    if content is None:
+                        continue
+                    if email_service.send_portfolio_digest_email(user.email, label, content):
+                        user.last_digest_sent_at = datetime.now(timezone.utc)
+                        db.commit()
+                except Exception as exc:
+                    db.rollback()
+                    logger.warning("digest email failed for user %s: %s", user_id, exc)
+                    sentry_sdk.capture_exception(exc)
+
+
 async def _digest_email_loop() -> None:
     """Sends the opt-in weekly/monthly portfolio-performance digest (see
     services/digest_service.py). Best-effort per user — one user's failed send/compute
@@ -227,29 +266,11 @@ async def _digest_email_loop() -> None:
     """
     while True:
         await asyncio.sleep(DIGEST_CHECK_INTERVAL_SECONDS)
-        db = SessionLocal()
         try:
-            for frequency, label in digest_service.FREQUENCY_LABELS.items():
-                due_users = await asyncio.to_thread(digest_service.users_due_for_digest, db, frequency)
-                for user in due_users:
-                    try:
-                        content = await asyncio.to_thread(digest_service.build_digest_content, db, user, frequency)
-                        if content is None:
-                            continue
-                        sent = await asyncio.to_thread(
-                            email_service.send_portfolio_digest_email, user.email, label, content
-                        )
-                        if sent:
-                            user.last_digest_sent_at = datetime.now(timezone.utc)
-                            await asyncio.to_thread(db.commit)
-                    except Exception as exc:
-                        logger.warning("digest email failed for user %s: %s", user.id, exc)
-                        sentry_sdk.capture_exception(exc)
+            await asyncio.to_thread(_send_due_digests)
         except Exception as exc:
             logger.exception("digest email loop iteration failed: %s", exc)
             sentry_sdk.capture_exception(exc)
-        finally:
-            db.close()
 
 
 @asynccontextmanager
@@ -263,9 +284,12 @@ async def lifespan(app: FastAPI):
         # ws_manager.redis_relay_loop's docstring.
         asyncio.create_task(ws_manager.redis_relay_loop()),
     ]
-    yield
-    for task in tasks:
-        task.cancel()
+    try:
+        yield
+    finally:
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
 
 
 app = FastAPI(title="Portfolio Analyzer API", lifespan=lifespan)
@@ -336,7 +360,10 @@ app.include_router(ws.router)
 # default to HEAD requests, and a GET-only route answers those with 405, which a
 # monitor reports as downtime even though the service is healthy.
 @app.api_route("/health", methods=["GET", "HEAD"])
-def health():
+async def health():
+    # Sync FastAPI handlers queue behind the shared AnyIO thread limiter. A busy
+    # API can exhaust that pool and make this trivial check miss Render's 5s
+    # deadline. This handler does no blocking work, so serve it on the event loop.
     return {"status": "ok"}
 
 
