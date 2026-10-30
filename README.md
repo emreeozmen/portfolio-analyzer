@@ -339,3 +339,8 @@ taşınır (`backend/migrations/`).
   puanından başlayan birleşik performans göstergesi
 - **Portföy optimizasyonu**: Maksimum Sharpe / Minimum Varyans (SLSQP ile)
   ve Risk Paritesi (eşit risk katkısı) hedefleri
+  ## Project Overview
+
+This project is a financial risk and portfolio analysis platform developed using Python, SQL, and modern web technologies.
+
+It aims to support data-driven investment analysis through financial data processing, portfolio evaluation, and risk assessment.
