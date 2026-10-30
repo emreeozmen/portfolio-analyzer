@@ -1,4 +1,40 @@
 {
+  "demo": {
+    "eyebrow": "GERÇEK FİYAT GEÇMİŞİ · KAYIT GEREKTİRMEZ",
+    "title": "İlk portföyünü keşfet.",
+    "intro": "Bir örnek seç, dağılımını incele ve geçmiş performansın nasıl hesaplandığını gör. Bu örnekler eğitim amaçlıdır.",
+    "choose": "Örnek portföy seç",
+    "performance": "Örnek portföyün geçmiş performansı",
+    "historical": "GEÇMİŞ PERFORMANS · BAZ 100",
+    "tryAmount": "TUTARI DEĞİŞTİR, SONUCU KEŞFET",
+    "calculatorTitle": "Bu döneme bir tutarla baksak?",
+    "calculatorHelp": "Seçtiğin tutarın, gösterilen veri döneminin başında bu dağılıma ayrılması halinde dönem sonundaki varsayımsal değerini incele.",
+    "startAmount": "Örnek başlangıç tutarı ({{currency}})",
+    "ending": "Geçmiş dönem sonundaki varsayımsal değer",
+    "amountNote": "Yalnızca geçmiş endeks değişimiyle hesaplanır. İşlem masrafı ve vergiler dahil değildir.",
+    "invalidAmount": "0'dan büyük, en fazla 1.000.000.000 olan geçerli bir tutar gir.",
+    "editExample": "Bu örneği kendi portföyüme uyarla",
+    "saveNote": "Giriş yaptıktan sonra ağırlıkları düzenleyebilirsin. Sen kaydetmedikçe portföy oluşturulmaz.",
+    "educational": "Örnek dağılımlar yatırım önerisi değildir. Geçmiş sonuçlar gelecekteki getirileri garanti etmez.",
+    "presets": {
+      "bist-five": { "title": "Eşit ağırlıklı BIST", "description": "Beş BIST hissesi, her birinde %20 pay. Eşit dağılımı keşfet." },
+      "us-tech": { "title": "ABD teknoloji örneği", "description": "Dört teknoloji hissesi, USD bazında ve S&P 500 kıyasıyla." },
+      "concentrated": { "title": "Yoğunlaşma örneği", "description": "Bir varlıkta %60 pay. Büyük ağırlığın etkisini incele." }
+    }
+  },
+  "snapshot": {
+    "eyebrow": "RAKAMLARI ANLAYALIM",
+    "title": "Portföyün bir bakışta",
+    "dailyData": "Günlük fiyat geçmişi",
+    "distribution": "Dağılım",
+    "assetCount": "{{count}} varlık",
+    "largest": "En büyük pay: {{ticker}} · {{weight}}",
+    "drawdown": "Geçmişteki en büyük düşüş",
+    "drawdownHelp": "Seçili dönemde bir zirveden sonraki dip seviyeye kadar ölçülen en büyük gerileme.",
+    "window": "Veri kapsamı",
+    "observations": "{{count}} günlük gözlem",
+    "note": "Bu özet geçmiş verileri açıklar; gelecekteki risk veya getiri için bir garanti değildir."
+  },
   "builder": {
     "title": "Portföy Analizi",
     "subtitle": "Ağırlıklı bir portföy kur; risk ve getirisini gerçek verilerle ölç.",

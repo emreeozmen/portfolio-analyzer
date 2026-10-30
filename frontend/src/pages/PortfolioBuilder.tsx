@@ -6,6 +6,8 @@ import type { TFunction } from 'i18next'
 import { FolderOpen, PieChart } from 'lucide-react'
 import {
   createPortfolio,
+  DEMO_PRESET_IDS,
+  getDemoPortfolio,
   createShareLink,
   deletePortfolio,
   deleteShareLink,
@@ -30,6 +32,7 @@ import {
   type SymbolSearchResult,
 } from '../api'
 import Card from '../components/Card'
+import PortfolioSnapshot from '../components/PortfolioSnapshot'
 import PageHeader from '../components/PageHeader'
 import EmptyState from '../components/EmptyState'
 import LineChart from '../charts/LineChart'
@@ -1012,6 +1015,24 @@ function PortfolioBuilderPage() {
   const navigate = useNavigate()
 
   useEffect(() => {
+    const pending = (location.state as { demoPreset?: string } | null)?.demoPreset
+    const preset = DEMO_PRESET_IDS.find((id) => id === pending)
+    if (!preset) return
+    let cancelled = false
+    getDemoPortfolio(preset).then((example) => {
+      if (cancelled) return
+      setName(t(`demo.presets.${preset}.title`))
+      setRows(example.weights.map((item) => ({ ticker: item.ticker, weight: (item.weight * 100).toFixed(2) })))
+      setEditingId(null)
+      setBenchmarkPreset(preset === 'us-tech' ? '^GSPC' : '')
+      navigate('/portfolio', { replace: true, state: null })
+    }).catch((err) => {
+      if (!cancelled) setError(err instanceof Error ? err.message : String(err))
+    })
+    return () => { cancelled = true }
+  }, [location.state, navigate, t])
+
+  useEffect(() => {
     const pending = (location.state as { addAfterLogin?: SymbolSearchResult } | null)?.addAfterLogin
     if (!pending) return
     trackAsset(pending)
@@ -1528,6 +1549,7 @@ function PortfolioBuilderPage() {
 
       {analysis && !loadingAnalysis && (
         <>
+          <PortfolioSnapshot analysis={analysis} />
           <section className="panel">
             <div className="panel-header-row">
               <h2>{t('builder.performanceTitle', { name: analysis.name })}</h2>

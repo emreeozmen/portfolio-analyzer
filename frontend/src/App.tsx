@@ -29,6 +29,7 @@ const PublicPortfolioPage = lazy(() => import('./pages/PublicPortfolio'))
 const AdminUsersPage = lazy(() => import('./pages/AdminUsers'))
 const VerifyEmailPage = lazy(() => import('./pages/VerifyEmail'))
 const ResetPasswordPage = lazy(() => import('./pages/ResetPassword'))
+const DemoPortfolioPage = lazy(() => import('./pages/DemoPortfolio'))
 
 function RouteFallback() {
   const { t } = useTranslation('common')
@@ -67,6 +68,7 @@ function AppRoutes({
         <div key={location.pathname} className="page-transition">
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/demo" element={<DemoPortfolioPage />} />
             <Route path="/market" element={<MarketDashboardPage />} />
             <Route path="/assets" element={<AssetScreenerPage />} />
             <Route path="/karsilastir" element={<AssetComparePage />} />

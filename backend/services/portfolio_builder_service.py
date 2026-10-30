@@ -1,4 +1,5 @@
 import secrets
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
@@ -144,15 +145,20 @@ def get_portfolio_assets(db: Session, portfolio_id: int) -> list[tuple[Portfolio
     )
 
 
-def compute_portfolio_analysis_payload(db: Session, portfolio: Portfolio) -> dict:
+def compute_portfolio_analysis_payload(
+    db: Session, portfolio: Portfolio, *, portfolio_assets: list[tuple[PortfolioAsset, Asset]] | None = None
+) -> dict:
     """Builds the full /portfolios/{id}/analysis response body — shared by the owner
     route (routers/portfolios.py) and the public, unauthenticated route
     (routers/public.py) so a shared portfolio's public view is byte-for-byte the same
     computation the owner sees, not a second parallel implementation. Raises
     ValueError for business-rule failures (no assets, no price data) — callers
     translate that to an HTTP 400.
+    Fixed public demos can supply transient asset/weight pairs without saving a
+    portfolio; ordinary owner/share routes always load the persisted pairs.
     """
-    portfolio_assets = get_portfolio_assets(db, portfolio.id)
+    if portfolio_assets is None:
+        portfolio_assets = get_portfolio_assets(db, portfolio.id)
     if not portfolio_assets:
         raise ValueError("Portföyde varlık bulunamadı")
 
@@ -198,5 +204,11 @@ def compute_portfolio_analysis_payload(db: Session, portfolio: Portfolio) -> dic
         "benchmark": benchmark,
         "sector_allocation": sector_allocation,
         "currency_allocation": currency_allocation,
+        "data_window": {
+            "start_date": analysis["portfolio_index"][0]["date"],
+            "end_date": analysis["portfolio_index"][-1]["date"],
+            "observations": len(analysis["portfolio_index"]),
+            "calculated_at": datetime.now(timezone.utc).isoformat(),
+        },
         **analysis,
     }

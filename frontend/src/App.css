@@ -1,3 +1,54 @@
+.demo-page { max-width: 1180px; margin: 0 auto; }
+.demo-intro { max-width: 760px; padding: 34px 0 30px; }
+.demo-eyebrow { color: var(--primary); font-size: 11px; font-weight: 600; letter-spacing: .12em; display: inline-flex; align-items: center; gap: 8px; }
+.demo-intro h1 { font-size: clamp(32px, 4vw, 52px); letter-spacing: -.04em; line-height: 1.15; margin: 18px 0; }
+.demo-intro p { color: var(--text-muted); font-size: 16px; line-height: 1.8; }
+.demo-presets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 30px; }
+.demo-preset { position: relative; text-align: left; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 22px; color: var(--text); display: flex; flex-direction: column; align-items: flex-start; gap: 12px; cursor: pointer; transition: border-color .2s, background .2s; }
+.demo-preset:hover, .demo-preset:focus-visible { border-color: var(--primary); }
+.demo-preset.is-selected { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--surface)); }
+.demo-preset-number { font-family: var(--mono); color: var(--primary); font-size: 12px; }
+.demo-preset strong { color: var(--text-h); font-size: 17px; }
+.demo-preset > span:last-of-type { color: var(--text-muted); font-size: 13px; line-height: 1.6; }
+.demo-preset > svg { position: absolute; right: 20px; top: 22px; color: var(--primary); }
+.portfolio-snapshot { border: 1px solid var(--border); border-radius: 18px; padding: 25px; margin: 0 0 24px; background: var(--surface); }
+.snapshot-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 24px; flex-wrap: wrap; }
+.snapshot-heading h2 { margin: 7px 0 0; font-size: 23px; letter-spacing: -.025em; }
+.snapshot-source { border: 1px solid var(--border); border-radius: 100px; padding: 7px 11px; color: var(--text-muted); font-size: 11px; }
+.snapshot-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+.snapshot-grid article { border-left: 1px solid var(--border); padding-left: 20px; min-width: 0; }
+.snapshot-grid article:first-child { border-left: 0; padding-left: 0; }
+.snapshot-grid svg { color: var(--primary); margin-bottom: 8px; }
+.snapshot-grid h3 { color: var(--text-muted); font-size: 12px; font-weight: 400; margin: 0 0 7px; }
+.snapshot-grid strong { color: var(--text-h); font-size: clamp(19px, 2.3vw, 26px); letter-spacing: -.025em; }
+.snapshot-grid p { color: var(--text-muted); font-size: 12px; line-height: 1.7; margin: 7px 0 0; }
+.snapshot-footnote { color: var(--text-muted); font-size: 11px; line-height: 1.7; margin: 20px 0 0; }
+.demo-performance { padding: 26px; }
+.demo-performance-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 28px; flex-wrap: wrap; }
+.demo-performance-heading h2 { font-size: 23px; margin: 8px 0 0; }
+.demo-return { color: var(--text-h); font-size: 29px; letter-spacing: -.04em; }
+.demo-detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 22px; align-items: stretch; }
+.demo-detail-grid > section { padding: 26px; min-width: 0; }
+.demo-allocation > div { max-height: 230px; }
+.demo-allocation ul { list-style: none; margin: 20px 0 0; padding: 0; }
+.demo-allocation li { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+.demo-calculator label { display: block; font-size: 12px; color: var(--text-muted); margin: 22px 0 8px; }
+.demo-calculator input { width: 100%; min-height: 50px; padding: 12px 15px; font-size: 20px; font-family: var(--mono); }
+.demo-calculator input[aria-invalid='true'] { border-color: var(--danger); }
+.demo-ending { display: flex; flex-direction: column; gap: 10px; padding: 24px 0 18px; }
+.demo-ending > span { font-size: 12px; color: var(--text-muted); }
+.demo-ending strong { font-size: clamp(25px, 3vw, 36px); color: var(--text-h); letter-spacing: -.04em; overflow-wrap: anywhere; }
+.demo-calculator #demo-amount-note, .demo-save-note { font-size: 11px; line-height: 1.7; }
+.demo-calculator .btn-primary { margin-top: 15px; display: inline-flex; align-items: center; gap: 10px; }
+@media (max-width: 760px) {
+  .demo-presets, .snapshot-grid, .demo-detail-grid { grid-template-columns: 1fr; }
+  .demo-intro { padding-top: 15px; }
+  .demo-preset { padding: 18px; gap: 8px; }
+  .snapshot-grid article, .snapshot-grid article:first-child { border-left: 0; padding: 0 0 18px; border-bottom: 1px solid var(--border); }
+  .snapshot-grid article:last-child { border-bottom: 0; padding-bottom: 0; }
+  .portfolio-snapshot, .demo-performance, .demo-detail-grid > section { padding: 20px; }
+}
+
 .app-shell {
   min-height: 100vh;
   display: flex;
@@ -119,6 +170,11 @@
   position: relative;
   width: 260px;
   flex-shrink: 0;
+}
+
+@media (min-width: 1181px) and (max-width: 1500px) {
+  .topbar { gap: 16px; }
+  .symbol-search { width: 200px; }
 }
 
 .symbol-search-input {

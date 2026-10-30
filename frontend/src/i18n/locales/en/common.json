@@ -1,4 +1,5 @@
 {
+  "demoNav": "Demo",
   "dataLoading": "Loading data; the server may take a little while to respond…",
   "dataEmpty": "No data was received to display.",
   "retryData": "Try again",

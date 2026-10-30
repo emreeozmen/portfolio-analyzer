@@ -1,4 +1,41 @@
 {
+  "demo": {
+    "eyebrow": "REAL PRICE HISTORY · NO SIGN-UP REQUIRED",
+    "title": "Explore your first portfolio.",
+    "intro": "Choose an example, inspect its allocation and see how historical performance is calculated. These examples are educational.",
+    "choose": "Choose an example portfolio",
+    "performance": "Example portfolio historical performance",
+    "historical": "HISTORICAL PERFORMANCE · BASE 100",
+    "tryAmount": "CHANGE THE AMOUNT, EXPLORE THE RESULT",
+    "calculatorTitle": "Put this period into perspective.",
+    "calculatorHelp": "Explore the hypothetical ending value if the selected amount had been allocated this way at the beginning of the displayed data period.",
+    "startAmount": "Example starting amount ({{currency}})",
+    "ending": "Hypothetical value at the end of the historical period",
+    "amountNote": "Based only on the historical index change. Transaction fees and taxes are excluded.",
+    "invalidAmount": "Enter a valid amount greater than 0 and no more than 1,000,000,000.",
+    "editExample": "Adapt this example to my portfolio",
+    "saveNote": "Sign in to edit the weights. No portfolio is created until you choose to save.",
+    "educational": "Example allocations are not investment recommendations. Past results do not guarantee future returns.",
+    "presets": {
+      "bist-five": { "title": "Equal-weight BIST", "description": "Five BIST stocks, with 20% in each. Explore equal weighting." },
+      "us-tech": { "title": "US technology example", "description": "Four technology stocks in USD, compared with the S&P 500." },
+      "concentrated": { "title": "Concentration example", "description": "A 60% position in one asset. Explore the effect of a larger weight." }
+    }
+  },
+  "snapshot": {
+    "eyebrow": "UNDERSTAND THE NUMBERS",
+    "title": "Your portfolio at a glance",
+    "dailyData": "Daily price history",
+    "distribution": "Allocation",
+    "assetCount_one": "{{count}} asset",
+    "assetCount_other": "{{count}} assets",
+    "largest": "Largest weight: {{ticker}} · {{weight}}",
+    "drawdown": "Largest historical drawdown",
+    "drawdownHelp": "The largest decline from a peak to a subsequent trough in the selected period.",
+    "window": "Data coverage",
+    "observations": "{{count}} daily observations",
+    "note": "This summary describes historical data; it does not guarantee future risk or returns."
+  },
   "builder": {
     "title": "Portfolio Analysis",
     "subtitle": "Build a weighted portfolio; measure its risk and return with real data.",

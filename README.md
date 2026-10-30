@@ -77,6 +77,11 @@ tipografisi, altın vurgu rengi) sahiptir.
   bazında, döner 3D küre üzerinde).
 
 **Portföy analizi**
+- **Kayıtsız demo** (`/demo`): gerçek günlük fiyat geçmişiyle üç eğitim amaçlı örnek
+  dağılımı inceleme, başlangıç tutarını değiştirerek geçmiş dönem için varsayımsal
+  değer hesaplama ve örneği kaydetmeden kendi portföy formuna taşıma.
+- **Portföyün bir bakışta**: en büyük varlık payı, geçmiş maksimum düşüş ve analizde
+  kullanılan ortak tarih aralığı/gözlem sayısı; özel ve paylaşılan analizlerde de görünür.
 - Ağırlıklı portföy oluşturma/düzenleme/silme, kaydırma çubuğuyla ağırlık
   ayarlama, tek tıkla eşit dağıtım.
 - Portföy endeksi (baz=100), BIST 100 veya özel bir kıyas endeksiyle

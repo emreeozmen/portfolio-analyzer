@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { PieChart, ShieldCheck } from 'lucide-react'
 import { getPublicPortfolioAnalysis, type PortfolioAnalysis } from '../api'
 import Card from '../components/Card'
+import PortfolioSnapshot from '../components/PortfolioSnapshot'
 import PageHeader from '../components/PageHeader'
 import LineChart from '../charts/LineChart'
 import DonutChart, { DONUT_PALETTE } from '../charts/DonutChart'
@@ -37,6 +38,7 @@ function PublicPortfolioPage() {
 
       {analysis && !loading && (
         <>
+          <PortfolioSnapshot analysis={analysis} />
           <section className="panel">
             <p className="muted" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
               <ShieldCheck size={16} /> {t('shared.readOnlyNote')}
