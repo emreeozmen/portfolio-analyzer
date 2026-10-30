@@ -1,5 +1,6 @@
 import { getToken } from './auth'
 import i18n from './i18n'
+import { apiFetch } from './lib/apiFetch'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
@@ -334,7 +335,7 @@ async function parseErrorDetail(res: Response, fallback: string): Promise<string
 
 /** Sent on every request alongside auth so the backend can localize a handful of
  * fixed error messages (see backend/i18n.py) — `Accept-Language` can't be used here
- * since it's a forbidden header name browsers won't let `fetch()` set. */
+ * since it's a forbidden header name browsers won't let `apiFetch()` set. */
 function authHeaders(): HeadersInit {
   const token = getToken()
   const headers: HeadersInit = { 'X-Lang': i18n.language }
@@ -385,7 +386,7 @@ export function __clearApiCacheForTests(): void {
 }
 
 export async function register(email: string, password: string): Promise<TokenResponse> {
-  const res = await fetch(`${API_BASE}/auth/register`, {
+  const res = await apiFetch(`${API_BASE}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Lang': i18n.language },
     body: JSON.stringify({ email, password }),
@@ -395,7 +396,7 @@ export async function register(email: string, password: string): Promise<TokenRe
 }
 
 export async function login(email: string, password: string): Promise<LoginResult> {
-  const res = await fetch(`${API_BASE}/auth/login`, {
+  const res = await apiFetch(`${API_BASE}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
@@ -405,7 +406,7 @@ export async function login(email: string, password: string): Promise<LoginResul
 }
 
 export async function forgotPassword(email: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+  const res = await apiFetch(`${API_BASE}/auth/forgot-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Lang': i18n.language },
     body: JSON.stringify({ email }),
@@ -417,7 +418,7 @@ export async function forgotPassword(email: string): Promise<void> {
 }
 
 export async function resetPassword(token: string, newPassword: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/auth/reset-password`, {
+  const res = await apiFetch(`${API_BASE}/auth/reset-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Lang': i18n.language },
     body: JSON.stringify({ token, new_password: newPassword }),
@@ -426,7 +427,7 @@ export async function resetPassword(token: string, newPassword: string): Promise
 }
 
 export async function verifyTwoFactor(challengeToken: string, code: string): Promise<TokenResponse> {
-  const res = await fetch(`${API_BASE}/auth/2fa/verify`, {
+  const res = await apiFetch(`${API_BASE}/auth/2fa/verify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ challenge_token: challengeToken, code }),
@@ -448,13 +449,13 @@ export interface CurrentUser {
 }
 
 export async function getCurrentUser(): Promise<CurrentUser> {
-  const res = await fetch(`${API_BASE}/auth/me`, { headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/auth/me`, { headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load user: ${res.status}`))
   return res.json()
 }
 
 export async function verifyEmail(token: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/auth/verify-email`, {
+  const res = await apiFetch(`${API_BASE}/auth/verify-email`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token }),
@@ -463,7 +464,7 @@ export async function verifyEmail(token: string): Promise<void> {
 }
 
 export async function resendVerificationEmail(): Promise<void> {
-  const res = await fetch(`${API_BASE}/auth/resend-verification`, { method: 'POST', headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/auth/resend-verification`, { method: 'POST', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to resend verification email: ${res.status}`))
 }
 
@@ -471,7 +472,7 @@ export async function updateNotificationPreferences(
   emailAlertsEnabled: boolean,
   digestFrequency: DigestFrequency,
 ): Promise<CurrentUser> {
-  const res = await fetch(`${API_BASE}/auth/me/notifications`, {
+  const res = await apiFetch(`${API_BASE}/auth/me/notifications`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ email_alerts_enabled: emailAlertsEnabled, digest_frequency: digestFrequency }),
@@ -481,7 +482,7 @@ export async function updateNotificationPreferences(
 }
 
 export async function updateCurrency(baseCurrency: string): Promise<CurrentUser> {
-  const res = await fetch(`${API_BASE}/auth/me/currency`, {
+  const res = await apiFetch(`${API_BASE}/auth/me/currency`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ base_currency: baseCurrency }),
@@ -496,13 +497,13 @@ export interface TwoFactorSetup {
 }
 
 export async function setupTwoFactor(): Promise<TwoFactorSetup> {
-  const res = await fetch(`${API_BASE}/auth/2fa/setup`, { method: 'POST', headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/auth/2fa/setup`, { method: 'POST', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to start 2FA setup: ${res.status}`))
   return res.json()
 }
 
 export async function enableTwoFactor(code: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/auth/2fa/enable`, {
+  const res = await apiFetch(`${API_BASE}/auth/2fa/enable`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ code }),
@@ -511,7 +512,7 @@ export async function enableTwoFactor(code: string): Promise<void> {
 }
 
 export async function disableTwoFactor(password: string, code: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/auth/2fa/disable`, {
+  const res = await apiFetch(`${API_BASE}/auth/2fa/disable`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ password, code }),
@@ -529,18 +530,18 @@ export interface UserSession {
 }
 
 export async function getSessions(): Promise<UserSession[]> {
-  const res = await fetch(`${API_BASE}/auth/sessions`, { headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/auth/sessions`, { headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load sessions: ${res.status}`))
   return res.json()
 }
 
 export async function revokeSession(id: number): Promise<void> {
-  const res = await fetch(`${API_BASE}/auth/sessions/${id}`, { method: 'DELETE', headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/auth/sessions/${id}`, { method: 'DELETE', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to revoke session: ${res.status}`))
 }
 
 export async function revokeAllOtherSessions(): Promise<void> {
-  const res = await fetch(`${API_BASE}/auth/sessions/revoke-all-others`, { method: 'POST', headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/auth/sessions/revoke-all-others`, { method: 'POST', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to revoke other sessions: ${res.status}`))
 }
 
@@ -552,7 +553,7 @@ export interface AuditLogEntry {
 }
 
 export async function getActivity(): Promise<AuditLogEntry[]> {
-  const res = await fetch(`${API_BASE}/auth/activity`, { headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/auth/activity`, { headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load activity: ${res.status}`))
   return res.json()
 }
@@ -567,13 +568,13 @@ export interface AdminUser {
 // 403s for every account except the one configured as ADMIN_EMAIL on the backend —
 // see routers/auth.py's _require_admin.
 export async function getAdminUsers(): Promise<AdminUser[]> {
-  const res = await fetch(`${API_BASE}/auth/admin/users`, { headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/auth/admin/users`, { headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load users: ${res.status}`))
   return res.json()
 }
 
 export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/auth/me/password`, {
+  const res = await apiFetch(`${API_BASE}/auth/me/password`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
@@ -582,7 +583,7 @@ export async function changePassword(currentPassword: string, newPassword: strin
 }
 
 export async function changeEmail(newEmail: string, currentPassword: string): Promise<CurrentUser> {
-  const res = await fetch(`${API_BASE}/auth/me/email`, {
+  const res = await apiFetch(`${API_BASE}/auth/me/email`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ new_email: newEmail, current_password: currentPassword }),
@@ -593,27 +594,27 @@ export async function changeEmail(newEmail: string, currentPassword: string): Pr
 
 export async function getHoldingsValuation(portfolioId?: number): Promise<ValuationResponse> {
   const qs = portfolioId !== undefined ? `?portfolio_id=${portfolioId}` : ''
-  const res = await fetch(`${API_BASE}/holdings/valuation${qs}`, { headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/holdings/valuation${qs}`, { headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load valuation: ${res.status}`))
   return res.json()
 }
 
 export async function getHoldingsValueHistory(portfolioId?: number): Promise<ValueHistoryResponse> {
   const qs = portfolioId !== undefined ? `?portfolio_id=${portfolioId}` : ''
-  const res = await fetch(`${API_BASE}/holdings/value-history${qs}`, { headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/holdings/value-history${qs}`, { headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load value history: ${res.status}`))
   return res.json()
 }
 
 export async function getDividendHistory(portfolioId?: number): Promise<DividendPayment[]> {
   const qs = portfolioId !== undefined ? `?portfolio_id=${portfolioId}` : ''
-  const res = await fetch(`${API_BASE}/holdings/dividends${qs}`, { headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/holdings/dividends${qs}`, { headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load dividend history: ${res.status}`))
   return res.json()
 }
 
 export async function createHolding(input: HoldingInput): Promise<Holding> {
-  const res = await fetch(`${API_BASE}/holdings`, {
+  const res = await apiFetch(`${API_BASE}/holdings`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(input),
@@ -623,7 +624,7 @@ export async function createHolding(input: HoldingInput): Promise<Holding> {
 }
 
 export async function updateHolding(id: number, input: HoldingInput): Promise<Holding> {
-  const res = await fetch(`${API_BASE}/holdings/${id}`, {
+  const res = await apiFetch(`${API_BASE}/holdings/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(input),
@@ -633,7 +634,7 @@ export async function updateHolding(id: number, input: HoldingInput): Promise<Ho
 }
 
 export async function sellHolding(input: HoldingSaleInput): Promise<HoldingSale> {
-  const res = await fetch(`${API_BASE}/holdings/sell`, {
+  const res = await apiFetch(`${API_BASE}/holdings/sell`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(input),
@@ -644,20 +645,20 @@ export async function sellHolding(input: HoldingSaleInput): Promise<HoldingSale>
 
 export async function getHoldingSales(portfolioId?: number): Promise<HoldingSale[]> {
   const qs = portfolioId !== undefined ? `?portfolio_id=${portfolioId}` : ''
-  const res = await fetch(`${API_BASE}/holdings/sales${qs}`, { headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/holdings/sales${qs}`, { headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load sales: ${res.status}`))
   return res.json()
 }
 
 export async function getRealizedPLSummary(portfolioId?: number): Promise<RealizedPLSummary> {
   const qs = portfolioId !== undefined ? `?portfolio_id=${portfolioId}` : ''
-  const res = await fetch(`${API_BASE}/holdings/sales/summary${qs}`, { headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/holdings/sales/summary${qs}`, { headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load realized P&L: ${res.status}`))
   return res.json()
 }
 
 export async function deleteSale(id: number): Promise<void> {
-  const res = await fetch(`${API_BASE}/holdings/sales/${id}`, { method: 'DELETE', headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/holdings/sales/${id}`, { method: 'DELETE', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to delete sale: ${res.status}`))
 }
 
@@ -672,7 +673,7 @@ export interface HoldingImportResult {
 }
 
 export async function importHoldingsCsv(csvText: string, portfolioId: number | null): Promise<HoldingImportResult> {
-  const res = await fetch(`${API_BASE}/holdings/import`, {
+  const res = await apiFetch(`${API_BASE}/holdings/import`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ csv_text: csvText, portfolio_id: portfolioId }),
@@ -697,7 +698,7 @@ export async function previewHoldingsImportCsv(
   csvText: string,
   portfolioId: number | null,
 ): Promise<HoldingImportPreviewResult> {
-  const res = await fetch(`${API_BASE}/holdings/import/preview`, {
+  const res = await apiFetch(`${API_BASE}/holdings/import/preview`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ csv_text: csvText, portfolio_id: portfolioId }),
@@ -707,13 +708,13 @@ export async function previewHoldingsImportCsv(
 }
 
 export async function getAlerts(): Promise<PriceAlert[]> {
-  const res = await fetch(`${API_BASE}/alerts`, { headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/alerts`, { headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load alerts: ${res.status}`))
   return res.json()
 }
 
 export async function createAlert(ticker: string, condition: AlertCondition, threshold: number): Promise<PriceAlert> {
-  const res = await fetch(`${API_BASE}/alerts`, {
+  const res = await apiFetch(`${API_BASE}/alerts`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ ticker, condition, threshold }),
@@ -723,17 +724,17 @@ export async function createAlert(ticker: string, condition: AlertCondition, thr
 }
 
 export async function deleteAlert(id: number): Promise<void> {
-  const res = await fetch(`${API_BASE}/alerts/${id}`, { method: 'DELETE', headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/alerts/${id}`, { method: 'DELETE', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to delete alert: ${res.status}`))
 }
 
 export async function markAlertRead(id: number): Promise<void> {
-  const res = await fetch(`${API_BASE}/alerts/${id}/read`, { method: 'POST', headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/alerts/${id}/read`, { method: 'POST', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to mark alert read: ${res.status}`))
 }
 
 export async function markAllAlertsRead(): Promise<void> {
-  const res = await fetch(`${API_BASE}/alerts/read-all`, { method: 'POST', headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/alerts/read-all`, { method: 'POST', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to mark alerts read: ${res.status}`))
 }
 
@@ -743,7 +744,7 @@ export interface PushSubscriptionKeys {
 }
 
 export async function subscribePush(endpoint: string, keys: PushSubscriptionKeys): Promise<void> {
-  const res = await fetch(`${API_BASE}/push/subscribe`, {
+  const res = await apiFetch(`${API_BASE}/push/subscribe`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ endpoint, keys }),
@@ -752,7 +753,7 @@ export async function subscribePush(endpoint: string, keys: PushSubscriptionKeys
 }
 
 export async function unsubscribePush(endpoint: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/push/subscribe`, {
+  const res = await apiFetch(`${API_BASE}/push/subscribe`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ endpoint }),
@@ -761,13 +762,13 @@ export async function unsubscribePush(endpoint: string): Promise<void> {
 }
 
 export async function deleteHolding(id: number): Promise<void> {
-  const res = await fetch(`${API_BASE}/holdings/${id}`, { method: 'DELETE', headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/holdings/${id}`, { method: 'DELETE', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to delete holding: ${res.status}`))
 }
 
 export async function getAssets(): Promise<AssetSummary[]> {
   return cachedGet(`assets:${getToken() ?? 'anon'}`, async () => {
-    const res = await fetch(`${API_BASE}/assets`, { headers: authHeaders() })
+    const res = await apiFetch(`${API_BASE}/assets`, { headers: authHeaders() })
     if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load assets: ${res.status}`))
     return res.json()
   })
@@ -775,20 +776,20 @@ export async function getAssets(): Promise<AssetSummary[]> {
 
 export async function getAssetQuotes(): Promise<AssetQuote[]> {
   return cachedGet(`assetQuotes:${getToken() ?? 'anon'}`, async () => {
-    const res = await fetch(`${API_BASE}/assets/quotes`, { headers: authHeaders() })
+    const res = await apiFetch(`${API_BASE}/assets/quotes`, { headers: authHeaders() })
     if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load quotes: ${res.status}`))
     return res.json()
   })
 }
 
 export async function searchAssets(query: string): Promise<SymbolSearchResult[]> {
-  const res = await fetch(`${API_BASE}/assets/search?q=${encodeURIComponent(query)}`, { headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/assets/search?q=${encodeURIComponent(query)}`, { headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Search failed: ${res.status}`))
   return res.json()
 }
 
 export async function trackAsset(result: SymbolSearchResult): Promise<AssetSummary> {
-  const res = await fetch(`${API_BASE}/assets/track`, {
+  const res = await apiFetch(`${API_BASE}/assets/track`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({
@@ -804,13 +805,13 @@ export async function trackAsset(result: SymbolSearchResult): Promise<AssetSumma
 }
 
 export async function untrackAsset(ticker: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/assets/${ticker}/track`, { method: 'DELETE', headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/assets/${ticker}/track`, { method: 'DELETE', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to untrack asset: ${res.status}`))
   invalidateCache('assets:')
 }
 
 export async function rewatchAsset(ticker: string): Promise<AssetSummary> {
-  const res = await fetch(`${API_BASE}/assets/${ticker}/watchlist`, { method: 'POST', headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/assets/${ticker}/watchlist`, { method: 'POST', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to re-add asset: ${res.status}`))
   invalidateCache('assets:')
   return res.json()
@@ -818,12 +819,9 @@ export async function rewatchAsset(ticker: string): Promise<AssetSummary> {
 
 export async function getAssetAnalysis(ticker: string): Promise<AssetAnalysis> {
   return cachedGet(`assetAnalysis:${ticker}`, async () => {
-    // Bounded so a single slow/cold-starting backend response can't hang this request
-    // forever — plain fetch() has no default timeout, and pages that request many
-    // tickers at once (Piyasa Görünümü, Varlık Analizi) wait on the slowest one via
-    // Promise.allSettled, so one stalled request would otherwise stall the whole
-    // page's loading state indefinitely instead of surfacing an error to retry from.
-    const res = await fetch(`${API_BASE}/assets/${ticker}/analysis`, { signal: AbortSignal.timeout(20_000) })
+    // Analysis gets a longer total budget than ordinary reads. Pages requesting
+    // many tickers wait for all results, so keep even this heavier work bounded.
+    const res = await apiFetch(`${API_BASE}/assets/${ticker}/analysis`, { signal: AbortSignal.timeout(20_000) })
     if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load analysis: ${res.status}`))
     return res.json()
   })
@@ -889,13 +887,13 @@ export interface AssetFundamentalsResponse {
 }
 
 export async function getAssetFundamentals(ticker: string): Promise<AssetFundamentalsResponse> {
-  const res = await fetch(`${API_BASE}/assets/${ticker}/fundamentals`)
+  const res = await apiFetch(`${API_BASE}/assets/${ticker}/fundamentals`)
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load fundamentals: ${res.status}`))
   return res.json()
 }
 
 export async function getPortfolios(): Promise<Portfolio[]> {
-  const res = await fetch(`${API_BASE}/portfolios`, { headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/portfolios`, { headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load portfolios: ${res.status}`))
   return res.json()
 }
@@ -906,7 +904,7 @@ export async function createPortfolio(
   benchmarkSymbol?: string | null,
   benchmarkLabel?: string | null,
 ): Promise<Portfolio> {
-  const res = await fetch(`${API_BASE}/portfolios`, {
+  const res = await apiFetch(`${API_BASE}/portfolios`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({
@@ -921,7 +919,7 @@ export async function createPortfolio(
 }
 
 export async function getPortfolioAnalysis(id: number): Promise<PortfolioAnalysis> {
-  const res = await fetch(`${API_BASE}/portfolios/${id}/analysis`, { headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/portfolios/${id}/analysis`, { headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load portfolio analysis: ${res.status}`))
   return res.json()
 }
@@ -946,7 +944,7 @@ export async function getPortfolioOptimization(
   id: number,
   objective: 'max_sharpe' | 'min_variance' | 'risk_parity',
 ): Promise<PortfolioOptimization> {
-  const res = await fetch(`${API_BASE}/portfolios/${id}/optimize?objective=${objective}`, { headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/portfolios/${id}/optimize?objective=${objective}`, { headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load optimization: ${res.status}`))
   return res.json()
 }
@@ -960,7 +958,7 @@ export async function getPortfolioMonteCarlo(
     confidence: String(params.confidence),
     simulations: String(params.simulations ?? 2000),
   })
-  const res = await fetch(`${API_BASE}/portfolios/${id}/montecarlo?${query}`, { headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/portfolios/${id}/montecarlo?${query}`, { headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to run Monte Carlo simulation: ${res.status}`))
   return res.json()
 }
@@ -975,13 +973,13 @@ export async function getPortfolioGoalProjection(
     target: String(params.target),
     horizon_months: String(params.horizonMonths),
   })
-  const res = await fetch(`${API_BASE}/portfolios/${id}/goal?${query}`, { headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/portfolios/${id}/goal?${query}`, { headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to run goal projection: ${res.status}`))
   return res.json()
 }
 
 export async function getPortfolioBacktest(id: number, windowDays: number): Promise<RollingBacktestResult> {
-  const res = await fetch(`${API_BASE}/portfolios/${id}/backtest?window_days=${windowDays}`, {
+  const res = await apiFetch(`${API_BASE}/portfolios/${id}/backtest?window_days=${windowDays}`, {
     headers: authHeaders(),
   })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to run backtest: ${res.status}`))
@@ -989,7 +987,7 @@ export async function getPortfolioBacktest(id: number, windowDays: number): Prom
 }
 
 export async function getPortfolioDetail(id: number): Promise<PortfolioDetail> {
-  const res = await fetch(`${API_BASE}/portfolios/${id}`, { headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/portfolios/${id}`, { headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load portfolio: ${res.status}`))
   return res.json()
 }
@@ -1001,7 +999,7 @@ export async function updatePortfolio(
   benchmarkSymbol?: string | null,
   benchmarkLabel?: string | null,
 ): Promise<Portfolio> {
-  const res = await fetch(`${API_BASE}/portfolios/${id}`, {
+  const res = await apiFetch(`${API_BASE}/portfolios/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({
@@ -1016,24 +1014,24 @@ export async function updatePortfolio(
 }
 
 export async function deletePortfolio(id: number): Promise<void> {
-  const res = await fetch(`${API_BASE}/portfolios/${id}`, { method: 'DELETE', headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/portfolios/${id}`, { method: 'DELETE', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to delete portfolio: ${res.status}`))
 }
 
 export async function createShareLink(id: number): Promise<string> {
-  const res = await fetch(`${API_BASE}/portfolios/${id}/share`, { method: 'POST', headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/portfolios/${id}/share`, { method: 'POST', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to create share link: ${res.status}`))
   const data = await res.json()
   return data.share_token as string
 }
 
 export async function deleteShareLink(id: number): Promise<void> {
-  const res = await fetch(`${API_BASE}/portfolios/${id}/share`, { method: 'DELETE', headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/portfolios/${id}/share`, { method: 'DELETE', headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to revoke share link: ${res.status}`))
 }
 
 export async function getPublicPortfolioAnalysis(token: string): Promise<PortfolioAnalysis> {
-  const res = await fetch(`${API_BASE}/public/portfolios/${token}/analysis`)
+  const res = await apiFetch(`${API_BASE}/public/portfolios/${token}/analysis`)
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load shared portfolio: ${res.status}`))
   return res.json()
 }
@@ -1059,7 +1057,7 @@ export async function getTaxReport(portfolioId?: number, year?: number): Promise
   if (portfolioId !== undefined) params.set('portfolio_id', String(portfolioId))
   if (year !== undefined) params.set('year', String(year))
   const qs = params.toString() ? `?${params.toString()}` : ''
-  const res = await fetch(`${API_BASE}/holdings/sales/tax-report${qs}`, { headers: authHeaders() })
+  const res = await apiFetch(`${API_BASE}/holdings/sales/tax-report${qs}`, { headers: authHeaders() })
   if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load tax report: ${res.status}`))
   return res.json()
 }
@@ -1088,33 +1086,43 @@ export interface CountryInflation {
 }
 
 export async function getFxQuotes(): Promise<FxQuote[]> {
-  const res = await fetch(`${API_BASE}/markets/fx`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load FX quotes: ${res.status}`))
-  return res.json()
+  return cachedGet('getFxQuotes', async () => {
+    const res = await apiFetch(`${API_BASE}/markets/fx`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load FX quotes: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function getCryptoQuotes(): Promise<CryptoQuote[]> {
-  const res = await fetch(`${API_BASE}/markets/crypto`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load crypto quotes: ${res.status}`))
-  return res.json()
+  return cachedGet('getCryptoQuotes', async () => {
+    const res = await apiFetch(`${API_BASE}/markets/crypto`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load crypto quotes: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function getInflationByCountry(): Promise<CountryInflation[]> {
-  const res = await fetch(`${API_BASE}/markets/inflation`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load inflation data: ${res.status}`))
-  return res.json()
+  return cachedGet('getInflationByCountry', async () => {
+    const res = await apiFetch(`${API_BASE}/markets/inflation`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load inflation data: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function getGdpGrowthByCountry(): Promise<CountryInflation[]> {
-  const res = await fetch(`${API_BASE}/markets/gdp-growth`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load GDP growth data: ${res.status}`))
-  return res.json()
+  return cachedGet('getGdpGrowthByCountry', async () => {
+    const res = await apiFetch(`${API_BASE}/markets/gdp-growth`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load GDP growth data: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function getUnemploymentByCountry(): Promise<CountryInflation[]> {
-  const res = await fetch(`${API_BASE}/markets/unemployment`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load unemployment data: ${res.status}`))
-  return res.json()
+  return cachedGet('getUnemploymentByCountry', async () => {
+    const res = await apiFetch(`${API_BASE}/markets/unemployment`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load unemployment data: ${res.status}`))
+    return res.json()
+  })
 }
 
 export interface TickerStripQuote {
@@ -1125,21 +1133,27 @@ export interface TickerStripQuote {
 }
 
 export async function getTickerStrip(): Promise<TickerStripQuote[]> {
-  const res = await fetch(`${API_BASE}/markets/ticker-strip`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load ticker strip: ${res.status}`))
-  return res.json()
+  return cachedGet('getTickerStrip', async () => {
+    const res = await apiFetch(`${API_BASE}/markets/ticker-strip`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load ticker strip: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function getMajorIndices(): Promise<TickerStripQuote[]> {
-  const res = await fetch(`${API_BASE}/markets/indices`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load indices: ${res.status}`))
-  return res.json()
+  return cachedGet('getMajorIndices', async () => {
+    const res = await apiFetch(`${API_BASE}/markets/indices`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load indices: ${res.status}`))
+    return res.json()
+  })
 }
 
 export async function getCommodities(): Promise<TickerStripQuote[]> {
-  const res = await fetch(`${API_BASE}/markets/commodities`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load commodities: ${res.status}`))
-  return res.json()
+  return cachedGet('getCommodities', async () => {
+    const res = await apiFetch(`${API_BASE}/markets/commodities`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load commodities: ${res.status}`))
+    return res.json()
+  })
 }
 
 export interface CryptoGlobalStats {
@@ -1151,9 +1165,11 @@ export interface CryptoGlobalStats {
 }
 
 export async function getCryptoGlobalStats(): Promise<CryptoGlobalStats> {
-  const res = await fetch(`${API_BASE}/markets/crypto/global`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load crypto global stats: ${res.status}`))
-  return res.json()
+  return cachedGet('getCryptoGlobalStats', async () => {
+    const res = await apiFetch(`${API_BASE}/markets/crypto/global`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load crypto global stats: ${res.status}`))
+    return res.json()
+  })
 }
 
 export interface IndexHistoryPoint {
@@ -1162,9 +1178,11 @@ export interface IndexHistoryPoint {
 }
 
 export async function getBist100History(): Promise<IndexHistoryPoint[]> {
-  const res = await fetch(`${API_BASE}/markets/bist100-history`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load BIST 100 history: ${res.status}`))
-  return res.json()
+  return cachedGet('getBist100History', async () => {
+    const res = await apiFetch(`${API_BASE}/markets/bist100-history`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load BIST 100 history: ${res.status}`))
+    return res.json()
+  })
 }
 
 export interface NewsItem {
@@ -1179,8 +1197,10 @@ export interface NewsItem {
 }
 
 export async function getMarketNews(): Promise<NewsItem[]> {
-  const res = await fetch(`${API_BASE}/markets/news`)
-  if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load market news: ${res.status}`))
-  return res.json()
+  return cachedGet('getMarketNews', async () => {
+    const res = await apiFetch(`${API_BASE}/markets/news`)
+    if (!res.ok) throw new Error(await parseErrorDetail(res, `Failed to load market news: ${res.status}`))
+    return res.json()
+  })
 }
 

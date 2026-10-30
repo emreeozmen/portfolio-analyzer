@@ -1,4 +1,9 @@
 {
+  "loading": "Piyasa verileri yükleniyor; sunucunun yanıt vermesi biraz sürebilir…",
+  "loadError": "Kripto verileri şu anda yüklenemedi. Bağlantı geçici olarak kesilmiş olabilir.",
+  "refreshError": "Güncelleme alınamadı. Son alınan veriler gösteriliyor.",
+  "dataUnavailable": "Piyasa verileri henüz alınamadı.",
+  "retry": "Tekrar dene",
   "title": "Kripto Piyasası",
   "intro": "Takip edilen {{count}} kripto para — günlük değişime göre en çok kazanan/kaybeden 5 varlık ve piyasa değerine göre sıralanmış tam liste, Yahoo Finance üzerinden gerçek verilerle.",
   "lastUpdated": "Son güncelleme: {{time}} · her dakika otomatik yenilenir",

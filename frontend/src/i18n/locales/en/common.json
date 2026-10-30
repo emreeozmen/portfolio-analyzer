@@ -1,4 +1,8 @@
 {
+  "dataLoading": "Loading data; the server may take a little while to respond…",
+  "dataEmpty": "No data was received to display.",
+  "retryData": "Try again",
+  "connectionError": "The server could not be reached. Check your connection and try again.",
   "skipToContent": "Skip to content",
   "brand": "Financial Risk & Portfolio Analysis Platform",
   "nav": {

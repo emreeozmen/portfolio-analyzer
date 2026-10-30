@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getCryptoQuotes, type CryptoQuote } from '../api'
 import TickerAvatar from '../components/TickerAvatar'
@@ -85,26 +85,54 @@ function CryptoLeaderboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const requestId = useRef(0)
 
-  const load = (showSpinner: boolean) => {
+  const load = useCallback((showSpinner: boolean) => {
+    const id = ++requestId.current
+    setError(null)
     if (showSpinner) setLoading(true)
     getCryptoQuotes()
       .then((data) => {
+        if (id !== requestId.current) return
+        if (data.length === 0) throw new Error('Market data unavailable')
         setQuotes(data)
         setLastUpdated(new Date())
       })
-      .catch((err) => setError(err instanceof Error ? err.message : String(err)))
-      .finally(() => setLoading(false))
-  }
+      .catch((err) => {
+        if (id === requestId.current) setError(err instanceof Error ? err.message : String(err))
+      })
+      .finally(() => {
+        if (id === requestId.current) setLoading(false)
+      })
+  }, [])
 
-  useEffect(() => load(true), [])
+  useEffect(() => {
+    load(true)
+    return () => { requestId.current++ }
+  }, [load])
+
+  useEffect(() => {
+    if (!error) return
+    const recover = () => load(true)
+    window.addEventListener('online', recover)
+    window.addEventListener('focus', recover)
+    return () => {
+      window.removeEventListener('online', recover)
+      window.removeEventListener('focus', recover)
+    }
+  }, [error, load])
 
   const liveQuotes = useLiveChannel<CryptoQuote[]>('crypto')
   useEffect(() => {
-    if (!liveQuotes) return
+    if (!liveQuotes?.length) return
+    requestId.current++
     setQuotes(liveQuotes)
     setLastUpdated(new Date())
+    setError(null)
+    setLoading(false)
   }, [liveQuotes])
+
+  const initialLoading = loading && quotes.length === 0
 
   const sorted = [...quotes].sort((a, b) => b.change_percent - a.change_percent)
   // Slicing the top/bottom 5 regardless of sign would mislabel "least-up"
@@ -130,14 +158,22 @@ function CryptoLeaderboardPage() {
         </div>
       )}
 
-      {error && <p className="error">{error}</p>}
+      {initialLoading && <p role="status" className="muted">{t('loading')}</p>}
+      {error && (
+        <div role="alert" className="error">
+          <p>{t(quotes.length ? 'refreshError' : 'loadError')}</p>
+          <button type="button" className="btn-secondary" onClick={() => load(true)} disabled={loading}>
+            {t('retry')}
+          </button>
+        </div>
+      )}
 
       <div className="leaderboard-grid">
         <div className="panel leaderboard-panel">
           <div className="panel-header-row">
             <h2>{t('topGainers')}</h2>
           </div>
-          {loading ? (
+          {initialLoading ? (
             <LeaderboardSkeleton />
           ) : gainers.length > 0 ? (
             <ul className="leaderboard-list">
@@ -146,7 +182,7 @@ function CryptoLeaderboardPage() {
               ))}
             </ul>
           ) : (
-            <p className="muted">{t('noGainersToday')}</p>
+            <p className="muted">{t(quotes.length ? 'noGainersToday' : 'dataUnavailable')}</p>
           )}
         </div>
 
@@ -154,7 +190,7 @@ function CryptoLeaderboardPage() {
           <div className="panel-header-row">
             <h2>{t('topLosers')}</h2>
           </div>
-          {loading ? (
+          {initialLoading ? (
             <LeaderboardSkeleton />
           ) : losers.length > 0 ? (
             <ul className="leaderboard-list">
@@ -163,7 +199,7 @@ function CryptoLeaderboardPage() {
               ))}
             </ul>
           ) : (
-            <p className="muted">{t('noLosersToday')}</p>
+            <p className="muted">{t(quotes.length ? 'noLosersToday' : 'dataUnavailable')}</p>
           )}
         </div>
       </div>
@@ -184,7 +220,7 @@ function CryptoLeaderboardPage() {
               </tr>
             </thead>
             <tbody>
-              {loading
+              {initialLoading
                 ? Array.from({ length: 8 }).map((_, i) => (
                     <tr key={i}>
                       <td colSpan={5}>
@@ -195,7 +231,8 @@ function CryptoLeaderboardPage() {
                       </td>
                     </tr>
                   ))
-                : quotes.map((q, i) => <MarketCapRow key={q.symbol} rank={i + 1} quote={q} />)}
+                : quotes.length ? quotes.map((q, i) => <MarketCapRow key={q.symbol} rank={i + 1} quote={q} />)
+                : <tr><td colSpan={5}>{t('dataUnavailable')}</td></tr>}
             </tbody>
           </table>
         </div>

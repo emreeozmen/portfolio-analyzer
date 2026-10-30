@@ -1,4 +1,9 @@
 {
+  "loading": "Loading market data; the server may take a little while to respond…",
+  "loadError": "Crypto data could not be loaded. The connection may be temporarily unavailable.",
+  "refreshError": "The update failed. Showing the last received data.",
+  "dataUnavailable": "Market data has not been received yet.",
+  "retry": "Try again",
   "title": "Crypto Market",
   "intro": "{{count}} tracked cryptocurrencies — the top 5 daily gainers/losers and the full list ranked by market cap, with real data from Yahoo Finance.",
   "lastUpdated": "Last updated: {{time}} · refreshes automatically every minute",

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { getToken } from '../auth'
 
 type Handler = (data: unknown) => void
@@ -37,18 +37,19 @@ export function LiveDataProvider({ children }: { children: ReactNode }) {
   const handlersRef = useRef<Map<string, Set<Handler>>>(new Map())
   const reconnectAttemptRef = useRef(0)
   const reconnectTimerRef = useRef<number | null>(null)
-  const closedByUsRef = useRef(false)
 
   useEffect(() => {
-    closedByUsRef.current = false
+    let disposed = false
 
     function connect() {
+      if (disposed) return
       const token = getToken()
       const url = `${WS_BASE}/ws${token ? `?token=${encodeURIComponent(token)}` : ''}`
       const socket = new WebSocket(url)
       socketRef.current = socket
 
       socket.onopen = () => {
+        if (disposed || socketRef.current !== socket) return
         setConnected(true)
         reconnectAttemptRef.current = 0
         const channels = Array.from(handlersRef.current.keys())
@@ -58,6 +59,7 @@ export function LiveDataProvider({ children }: { children: ReactNode }) {
       }
 
       socket.onmessage = (event) => {
+        if (disposed || socketRef.current !== socket) return
         let message: { channel?: string; data?: unknown }
         try {
           message = JSON.parse(event.data)
@@ -70,8 +72,8 @@ export function LiveDataProvider({ children }: { children: ReactNode }) {
       }
 
       socket.onclose = () => {
+        if (disposed || socketRef.current !== socket) return
         setConnected(false)
-        if (closedByUsRef.current) return
         const attempt = reconnectAttemptRef.current + 1
         reconnectAttemptRef.current = attempt
         const delay = Math.min(RECONNECT_BASE_DELAY_MS * 2 ** (attempt - 1), RECONNECT_MAX_DELAY_MS)
@@ -86,13 +88,13 @@ export function LiveDataProvider({ children }: { children: ReactNode }) {
     connect()
 
     return () => {
-      closedByUsRef.current = true
+      disposed = true
       if (reconnectTimerRef.current !== null) window.clearTimeout(reconnectTimerRef.current)
       socketRef.current?.close()
     }
   }, [])
 
-  function subscribe(channel: string, handler: Handler): () => void {
+  const subscribe = useCallback((channel: string, handler: Handler): () => void => {
     let set = handlersRef.current.get(channel)
     const isNewChannel = !set
     if (!set) {
@@ -116,9 +118,10 @@ export function LiveDataProvider({ children }: { children: ReactNode }) {
         }
       }
     }
-  }
+  }, [])
 
-  return <LiveDataContext.Provider value={{ connected, subscribe }}>{children}</LiveDataContext.Provider>
+  const value = useMemo(() => ({ connected, subscribe }), [connected, subscribe])
+  return <LiveDataContext.Provider value={value}>{children}</LiveDataContext.Provider>
 }
 
 export function useLiveData(): LiveDataContextValue {

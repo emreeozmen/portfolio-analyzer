@@ -5,6 +5,8 @@ Asset/PriceHistory rows, no watchlist scoping, just a fixed reference list
 plus a live/cached quote.
 """
 
+import logging
+import math
 from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -14,6 +16,22 @@ from services import market_data_provider, worldbank_service
 from services.http_cache import cache_control
 
 router = APIRouter(prefix="/markets", tags=["markets"])
+logger = logging.getLogger("uvicorn.error")
+
+
+def _available_quotes(quotes: list[dict]) -> list[dict]:
+    if not quotes:
+        # An upstream outage is not a successful empty market. Keep it retryable,
+        # and don't let browsers cache an empty list for the normal 15-minute TTL.
+        raise HTTPException(status_code=503, detail="Market data temporarily unavailable", headers={"Retry-After": "30"})
+    return quotes
+
+
+def _validated_quote(symbol: str) -> dict:
+    quote = market_data_provider.get_quote(symbol)
+    if not all(math.isfinite(quote[key]) for key in ("last_price", "change_percent")):
+        raise ValueError("Provider returned a non-finite price or change")
+    return quote
 
 # label is what's shown in the UI; yahoo_symbol is what's passed to yfinance.
 FX_PAIRS = [
@@ -183,10 +201,11 @@ class NewsItem(BaseModel):
 def _fetch_fx_quote(entry: tuple[str, str]) -> dict | None:
     symbol, label = entry
     try:
-        q = market_data_provider.get_quote(symbol)
-    except ValueError:
+        q = _validated_quote(symbol)
+        return {"pair": symbol, "label": label, "rate": q["last_price"], "change_percent": q["change_percent"]}
+    except Exception as exc:
+        logger.warning("FX quote unavailable for %s: %s", symbol, exc)
         return None  # one bad symbol shouldn't blank out the whole strip
-    return {"pair": symbol, "label": label, "rate": q["last_price"], "change_percent": q["change_percent"]}
 
 
 def compute_fx_quotes() -> list[dict]:
@@ -195,7 +214,7 @@ def compute_fx_quotes() -> list[dict]:
     # slowest single request instead of the sum of all of them.
     with ThreadPoolExecutor(max_workers=min(len(FX_PAIRS), 16) or 1) as pool:
         results = list(pool.map(_fetch_fx_quote, FX_PAIRS))
-    return [q for q in results if q is not None]
+    return _available_quotes([q for q in results if q is not None])
 
 
 @router.get("/fx", response_model=list[FxQuote], dependencies=[Depends(cache_control(900))])
@@ -206,16 +225,23 @@ def get_fx_quotes():
 def _fetch_crypto_quote(entry: tuple[str, str]) -> dict | None:
     symbol, name = entry
     try:
-        q = market_data_provider.get_quote(symbol)
-    except ValueError:
+        q = _validated_quote(symbol)
+        quote = {
+            "symbol": symbol.removesuffix("-USD"),
+            "name": name,
+            "last_price": q["last_price"],
+            "change_percent": q["change_percent"],
+            "market_cap": None,
+        }
+    except Exception as exc:
+        logger.warning("Crypto quote unavailable for %s: %s", symbol, exc)
         return None
-    return {
-        "symbol": symbol.removesuffix("-USD"),
-        "name": name,
-        "last_price": q["last_price"],
-        "change_percent": q["change_percent"],
-        "market_cap": market_data_provider.get_market_cap(symbol),
-    }
+    try:
+        market_cap = market_data_provider.get_market_cap(symbol)
+        quote["market_cap"] = market_cap if market_cap is not None and math.isfinite(market_cap) else None
+    except Exception as exc:
+        logger.warning("Crypto market cap unavailable for %s: %s", symbol, exc)
+    return quote
 
 
 def compute_crypto_quotes() -> list[dict]:
@@ -230,7 +256,7 @@ def compute_crypto_quotes() -> list[dict]:
     # Most valuable first; a symbol whose market cap we couldn't resolve sinks
     # to the bottom rather than being dropped, so it's still visible.
     quotes.sort(key=lambda q: q["market_cap"] if q["market_cap"] is not None else -1, reverse=True)
-    return quotes
+    return _available_quotes(quotes)
 
 
 @router.get("/crypto", response_model=list[CryptoQuote], dependencies=[Depends(cache_control(900))])
@@ -241,10 +267,11 @@ def get_crypto_quotes():
 def _fetch_ticker_quote(entry: tuple[str, str]) -> dict | None:
     symbol, label = entry
     try:
-        q = market_data_provider.get_quote(symbol)
-    except ValueError:
+        q = _validated_quote(symbol)
+        return {"symbol": symbol, "label": label, "value": q["last_price"], "change_percent": q["change_percent"]}
+    except Exception as exc:
+        logger.warning("Market quote unavailable for %s: %s", symbol, exc)
         return None
-    return {"symbol": symbol, "label": label, "value": q["last_price"], "change_percent": q["change_percent"]}
 
 
 def _compute_quotes_for(symbols: list[tuple[str, str]]) -> list[dict]:
@@ -252,7 +279,7 @@ def _compute_quotes_for(symbols: list[tuple[str, str]]) -> list[dict]:
     # symbols — same cold-cache-latency reasoning as compute_crypto_quotes/compute_fx_quotes.
     with ThreadPoolExecutor(max_workers=min(len(symbols), 16) or 1) as pool:
         results = list(pool.map(_fetch_ticker_quote, symbols))
-    return [q for q in results if q is not None]
+    return _available_quotes([q for q in results if q is not None])
 
 
 def compute_ticker_strip() -> list[dict]:
@@ -299,8 +326,9 @@ def get_bist100_history():
     """
     try:
         bars = market_data_provider.fetch_ohlcv_cached(market_data_provider.BIST100_SYMBOL)
-    except ValueError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.warning("BIST history unavailable: %s", exc)
+        raise HTTPException(status_code=502, detail="BIST history temporarily unavailable") from exc
     return [IndexHistoryPoint(date=bar.date.isoformat(), close=bar.close) for bar in bars]
 
 

@@ -1,4 +1,8 @@
 {
+  "dataLoading": "Veriler yükleniyor; sunucunun yanıt vermesi biraz sürebilir…",
+  "dataEmpty": "Gösterilecek veri alınamadı.",
+  "retryData": "Tekrar dene",
+  "connectionError": "Sunucuya ulaşılamadı. Bağlantınızı kontrol edip tekrar deneyin.",
   "skipToContent": "İçeriğe geç",
   "brand": "Finansal Risk & Portföy Analiz Platformu",
   "nav": {

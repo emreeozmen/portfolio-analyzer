@@ -9,6 +9,8 @@ import HeroWaveCanvas from '../components/HeroWaveCanvas'
 import MarketOverviewPanel from '../components/MarketOverviewPanel'
 import MarketNewsPanel from '../components/MarketNewsPanel'
 import Watchlist from '../components/Watchlist'
+import DataNotice from '../components/DataNotice'
+import { useRemoteData } from '../lib/useRemoteData'
 import TopMovers from '../components/TopMovers'
 import ExposureBreakdown from '../components/ExposureBreakdown'
 import Sparkline from '../components/Sparkline'
@@ -321,18 +323,9 @@ function Home() {
   const { t } = useTranslation('home')
   const isAuthenticated = !!getToken()
   const navigate = useNavigate()
-  const [quotes, setQuotes] = useState<AssetQuote[]>([])
   const liveQuotes = useLiveChannel<AssetQuote[]>('quotes')
-
-  useEffect(() => {
-    getAssetQuotes()
-      .then(setQuotes)
-      .catch(() => {}) // silent — the sidebars just stay empty on a fetch failure
-  }, [])
-
-  useEffect(() => {
-    if (liveQuotes) setQuotes(liveQuotes)
-  }, [liveQuotes])
+  const quoteRequest = useRemoteData<AssetQuote[]>(getAssetQuotes, [], liveQuotes)
+  const quotes = quoteRequest.data
 
   return (
     <>
@@ -368,6 +361,7 @@ function Home() {
 
       <div className="home-workspace">
         <aside className="home-sidebar">
+          {(quoteRequest.loading || quoteRequest.error) && <DataNotice {...quoteRequest} />}
           <Watchlist quotes={quotes} selectedTicker="" onSelect={(t) => navigate(`/assets/${t}`)} />
         </aside>
 
