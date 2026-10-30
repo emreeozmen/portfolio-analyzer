@@ -53,3 +53,21 @@ def test_bist_history_network_error_is_reported_as_a_dependency_error():
         with pytest.raises(HTTPException) as error:
             markets.get_bist100_history()
     assert error.value.status_code == 502
+
+
+@pytest.mark.parametrize("market_cap", [float("nan"), float("inf"), -float("inf")])
+def test_nonfinite_market_cap_cannot_break_json_serialization(market_cap):
+    with (
+        patch.object(markets.market_data_provider, "get_quote", return_value={"last_price": 100, "change_percent": 2}),
+        patch.object(markets.market_data_provider, "get_market_cap", return_value=market_cap),
+    ):
+        quote = markets._fetch_crypto_quote(("BTC-USD", "Bitcoin"))
+    assert quote["market_cap"] is None
+    assert quote["last_price"] == 100
+
+
+@pytest.mark.parametrize("key", ["last_price", "change_percent"])
+def test_nonfinite_price_is_treated_as_unavailable(key):
+    quote = {"last_price": 100, "change_percent": 2, key: float("nan")}
+    with patch.object(markets.market_data_provider, "get_quote", return_value=quote):
+        assert markets._fetch_crypto_quote(("BAD", "Bad")) is None
