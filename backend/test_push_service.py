@@ -39,14 +39,14 @@ def test_is_configured_true_when_both_keys_set():
 
 
 def test_upsert_subscription_creates_row(db_session):
-    sub = push_service.upsert_subscription(db_session, USER_ID, "https://push.example/1", "p256dh-key", "auth-key")
+    sub = push_service.upsert_subscription(db_session, USER_ID, "https://fcm.googleapis.com/1", "p256dh-key", "auth-key")
     assert sub.id is not None
     assert db_session.query(PushSubscription).count() == 1
 
 
 def test_upsert_subscription_same_endpoint_updates_instead_of_duplicating(db_session):
-    push_service.upsert_subscription(db_session, USER_ID, "https://push.example/1", "old-key", "old-auth")
-    push_service.upsert_subscription(db_session, USER_ID, "https://push.example/1", "new-key", "new-auth")
+    push_service.upsert_subscription(db_session, USER_ID, "https://fcm.googleapis.com/1", "old-key", "old-auth")
+    push_service.upsert_subscription(db_session, USER_ID, "https://fcm.googleapis.com/1", "new-key", "new-auth")
 
     assert db_session.query(PushSubscription).count() == 1
     row = db_session.query(PushSubscription).one()
@@ -54,19 +54,19 @@ def test_upsert_subscription_same_endpoint_updates_instead_of_duplicating(db_ses
 
 
 def test_remove_subscription_deletes_matching_row(db_session):
-    push_service.upsert_subscription(db_session, USER_ID, "https://push.example/1", "k", "a")
-    assert push_service.remove_subscription(db_session, USER_ID, "https://push.example/1") is True
+    push_service.upsert_subscription(db_session, USER_ID, "https://fcm.googleapis.com/1", "k", "a")
+    assert push_service.remove_subscription(db_session, USER_ID, "https://fcm.googleapis.com/1") is True
     assert db_session.query(PushSubscription).count() == 0
 
 
 def test_remove_subscription_wrong_user_returns_false(db_session):
-    push_service.upsert_subscription(db_session, USER_ID, "https://push.example/1", "k", "a")
-    assert push_service.remove_subscription(db_session, 999, "https://push.example/1") is False
+    push_service.upsert_subscription(db_session, USER_ID, "https://fcm.googleapis.com/1", "k", "a")
+    assert push_service.remove_subscription(db_session, 999, "https://fcm.googleapis.com/1") is False
     assert db_session.query(PushSubscription).count() == 1
 
 
 def test_send_alert_push_returns_zero_when_not_configured(db_session):
-    push_service.upsert_subscription(db_session, USER_ID, "https://push.example/1", "k", "a")
+    push_service.upsert_subscription(db_session, USER_ID, "https://fcm.googleapis.com/1", "k", "a")
     with patch.object(push_service.settings, "vapid_public_key", ""), patch.object(
         push_service.settings, "vapid_private_key", ""
     ):
@@ -75,8 +75,8 @@ def test_send_alert_push_returns_zero_when_not_configured(db_session):
 
 
 def test_send_alert_push_calls_webpush_per_subscription(db_session):
-    push_service.upsert_subscription(db_session, USER_ID, "https://push.example/1", "k1", "a1")
-    push_service.upsert_subscription(db_session, USER_ID, "https://push.example/2", "k2", "a2")
+    push_service.upsert_subscription(db_session, USER_ID, "https://fcm.googleapis.com/1", "k1", "a1")
+    push_service.upsert_subscription(db_session, USER_ID, "https://fcm.googleapis.com/2", "k2", "a2")
 
     with (
         patch.object(push_service.settings, "vapid_public_key", "pub"),
@@ -90,7 +90,7 @@ def test_send_alert_push_calls_webpush_per_subscription(db_session):
 
 
 def test_send_alert_push_removes_subscription_on_410_gone(db_session):
-    push_service.upsert_subscription(db_session, USER_ID, "https://push.example/1", "k", "a")
+    push_service.upsert_subscription(db_session, USER_ID, "https://fcm.googleapis.com/1", "k", "a")
     gone_response = MagicMock(status_code=410)
 
     with (
@@ -105,7 +105,7 @@ def test_send_alert_push_removes_subscription_on_410_gone(db_session):
 
 
 def test_send_alert_push_keeps_subscription_on_other_errors(db_session):
-    push_service.upsert_subscription(db_session, USER_ID, "https://push.example/1", "k", "a")
+    push_service.upsert_subscription(db_session, USER_ID, "https://fcm.googleapis.com/1", "k", "a")
     server_error_response = MagicMock(status_code=500)
 
     with (

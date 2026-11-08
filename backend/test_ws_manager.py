@@ -1,3 +1,4 @@
+from unittest.mock import AsyncMock
 import asyncio
 
 import pytest
@@ -72,8 +73,8 @@ async def test_unsubscribe_stops_further_broadcasts(manager):
 async def test_send_to_user_only_reaches_matching_user(manager):
     user_a = FakeWebSocket()
     user_b = FakeWebSocket()
-    await manager.connect(user_a, user_id=1)
-    await manager.connect(user_b, user_id=2)
+    await manager.connect(user_a, user_id=1, authorize=AsyncMock(return_value=True))
+    await manager.connect(user_b, user_id=2, authorize=AsyncMock(return_value=True))
     await manager.subscribe(user_a, ["alerts"])
     await manager.subscribe(user_b, ["alerts"])
 

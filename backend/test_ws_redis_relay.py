@@ -1,3 +1,4 @@
+from unittest.mock import AsyncMock
 """Exercises the Redis-backed WebSocket relay (services/ws_manager.py +
 services/redis_client.py) against fakeredis's async client — a real pub/sub
 implementation in-process, not a mock of individual calls — so this actually proves
@@ -100,8 +101,8 @@ async def test_redis_relay_loop_respects_per_user_targeting(fake_redis):
     manager = ws_manager.ConnectionManager()
     ws_manager.manager = manager
     user_a, user_b = FakeWebSocket(), FakeWebSocket()
-    await manager.connect(user_a, user_id=1)
-    await manager.connect(user_b, user_id=2)
+    await manager.connect(user_a, user_id=1, authorize=AsyncMock(return_value=True))
+    await manager.connect(user_b, user_id=2, authorize=AsyncMock(return_value=True))
     await manager.subscribe(user_a, ["alerts"])
     await manager.subscribe(user_b, ["alerts"])
 

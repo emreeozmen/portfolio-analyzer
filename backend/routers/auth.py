@@ -295,7 +295,7 @@ def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db),
             detail=localize("Geçersiz veya süresi dolmuş bağlantı", lang),
         ) from exc
 
-    user = db.get(User, user_id)
+    user = db.query(User).filter(User.id == user_id).with_for_update().populate_existing().first()
     if user is None or auth_service.password_fingerprint(user.hashed_password) != pwd_fp:
         # Same message for "no such user" and "token already used/stale" — both are a
         # dead link from the caller's point of view, and distinguishing them would leak
@@ -324,7 +324,7 @@ def get_current_user_and_session(
         raise credentials_error from exc
 
     session = auth_service.get_active_session(db, jti)
-    if session is None:
+    if session is None or session.user_id != user_id:
         raise credentials_error
     user = db.get(User, user_id)
     if user is None:
@@ -351,7 +351,7 @@ def get_current_user_optional(
     except (jwt.PyJWTError, ValueError):
         return None
     session = auth_service.get_active_session(db, jti)
-    if session is None:
+    if session is None or session.user_id != user_id:
         return None
     auth_service.touch_session(db, session)
     return db.get(User, user_id)
@@ -401,7 +401,7 @@ def change_email(
 
 
 class VerifyEmailRequest(BaseModel):
-    token: str
+    token: str = Field(max_length=2000)
 
 
 @router.post(
@@ -411,12 +411,14 @@ class VerifyEmailRequest(BaseModel):
 )
 def verify_email(payload: VerifyEmailRequest, db: Session = Depends(get_db)):
     try:
-        user_id = auth_service.decode_email_verification_token(payload.token)
+        user_id, email = auth_service.decode_email_verification_token(payload.token)
     except (jwt.PyJWTError, ValueError) as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Geçersiz veya süresi dolmuş bağlantı") from exc
-    user = db.get(User, user_id)
+    user = db.query(User).filter(User.id == user_id).with_for_update().populate_existing().first()
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if user.email != email:
+        raise HTTPException(status_code=400, detail="Geçersiz veya süresi dolmuş bağlantı")
     if not user.email_verified:
         user.email_verified = True
         db.commit()
@@ -464,6 +466,9 @@ def setup_2fa(db: Session = Depends(get_db), current_user: User = Depends(get_cu
     """Generates and stores a new TOTP secret, but leaves totp_enabled=False — the
     account isn't actually gated by 2FA until the user proves they captured the
     secret correctly via /auth/2fa/enable."""
+    current_user = db.query(User).filter(User.id == current_user.id).with_for_update().populate_existing().one()
+    if current_user.totp_enabled:
+        raise HTTPException(status_code=409, detail="Önce mevcut iki adımlı doğrulamayı şifre ve kod ile kapatın")
     secret = auth_service.generate_totp_secret()
     current_user.totp_secret = secret
     db.commit()
@@ -478,6 +483,7 @@ def enable_2fa(
     current_user: User = Depends(get_current_user),
     lang: str = Depends(get_lang),
 ):
+    current_user = db.query(User).filter(User.id == current_user.id).with_for_update().populate_existing().one()
     if not current_user.totp_secret:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=localize("Önce /auth/2fa/setup ile bir gizli anahtar üret", lang)
@@ -496,6 +502,7 @@ def disable_2fa(
     current_user: User = Depends(get_current_user),
     lang: str = Depends(get_lang),
 ):
+    current_user = db.query(User).filter(User.id == current_user.id).with_for_update().populate_existing().one()
     if not auth_service.verify_password(payload.password, current_user.hashed_password):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=localize("Şifre yanlış", lang))
     if not current_user.totp_secret or not auth_service.verify_totp(current_user.totp_secret, payload.code):

@@ -30,7 +30,8 @@ def _resolve_user_id(token: str | None) -> int | None:
     # because its JWT hasn't technically expired yet — same check as get_current_user.
     db = SessionLocal()
     try:
-        if auth_service.get_active_session(db, jti) is None:
+        session = auth_service.get_active_session(db, jti)
+        if session is None or session.user_id != user_id:
             return None
     finally:
         db.close()
@@ -43,13 +44,29 @@ async def websocket_endpoint(websocket: WebSocket, token: str | None = None):
     # check), which would otherwise block the whole event loop, and thus every other
     # concurrent request/WebSocket this worker is serving, on every new connection.
     user_id = await asyncio.to_thread(_resolve_user_id, token)
-    await ws_manager.manager.connect(websocket, user_id)
+    async def authorize():
+        return await asyncio.to_thread(_resolve_user_id, token) == user_id
+
+    await ws_manager.manager.connect(websocket, user_id, authorize=authorize if user_id is not None else None)
     try:
         while True:
-            message = await websocket.receive_json()
+            try:
+                message = await asyncio.wait_for(websocket.receive_json(), timeout=30)
+            except asyncio.TimeoutError:
+                if user_id is not None and not await authorize():
+                    await websocket.close(code=1008)
+                    break
+                continue
+            if user_id is not None and not await authorize():
+                await websocket.close(code=1008)
+                break
+            if not isinstance(message, dict):
+                continue
             action = message.get("action")
             channels = message.get("channels") or []
-            if not isinstance(channels, list):
+            if not isinstance(channels, list) or len(channels) > 16 or not all(
+                isinstance(channel, str) and len(channel) <= 64 for channel in channels
+            ):
                 continue
             if action == "subscribe":
                 await ws_manager.manager.subscribe(websocket, channels)

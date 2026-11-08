@@ -247,6 +247,8 @@ def get_portfolio_montecarlo(
         raise HTTPException(status_code=404, detail="Portfolio not found")
 
     price_series_by_ticker, weights, _ = _load_portfolio_series(db, portfolio)
+    if simulations * horizon_days * len(weights) > 12_000_000:
+        raise HTTPException(status_code=400, detail="Reduce simulation count or horizon for this portfolio")
     result = analysis_service.monte_carlo_analysis(
         price_series_by_ticker, weights, horizon_days, confidence_level=confidence, n_simulations=simulations
     )
@@ -271,12 +273,16 @@ def get_portfolio_goal(
         raise HTTPException(status_code=400, detail=localize("Geçersiz tutar", lang))
     if horizon_months < 1 or horizon_months > 600:
         raise HTTPException(status_code=400, detail=localize("Geçersiz ufuk (ay)", lang))
+    if simulations < 100 or simulations > 20000:
+        raise HTTPException(status_code=400, detail=localize("Geçersiz simülasyon sayısı", lang))
 
     portfolio = portfolio_builder_service.get_portfolio(db, current_user.id, portfolio_id)
     if portfolio is None:
         raise HTTPException(status_code=404, detail="Portfolio not found")
 
     price_series_by_ticker, weights, _ = _load_portfolio_series(db, portfolio)
+    if simulations * horizon_months * 21 * len(weights) > 12_000_000:
+        raise HTTPException(status_code=400, detail="Reduce simulation count or horizon for this portfolio")
     result = analysis_service.goal_planning_analysis(
         price_series_by_ticker,
         weights,

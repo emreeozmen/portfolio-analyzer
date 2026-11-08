@@ -34,6 +34,11 @@
     "topojson-client": "^3.1.0",
     "world-atlas": "^2.0.2"
   },
+  "overrides": {
+    "deepmerge": "4.1.1",
+    "glob": "^14.0.4",
+    "minimatch": "^11.0.5"
+  },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
     "@testing-library/dom": "^10.4.1",

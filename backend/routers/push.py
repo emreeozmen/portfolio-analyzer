@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from config import settings
@@ -16,17 +16,17 @@ class VapidPublicKeyResponse(BaseModel):
 
 
 class SubscriptionKeys(BaseModel):
-    p256dh: str
-    auth: str
+    p256dh: str = Field(min_length=1, max_length=256)
+    auth: str = Field(min_length=1, max_length=256)
 
 
 class SubscribeRequest(BaseModel):
-    endpoint: str
+    endpoint: str = Field(max_length=2048)
     keys: SubscriptionKeys
 
 
 class UnsubscribeRequest(BaseModel):
-    endpoint: str
+    endpoint: str = Field(max_length=2048)
 
 
 @router.get("/vapid-public-key", response_model=VapidPublicKeyResponse)
@@ -46,9 +46,12 @@ def subscribe(
 ):
     if not push_service.is_configured():
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Push bildirimleri yapılandırılmamış")
-    push_service.upsert_subscription(
-        db, user_id=current_user.id, endpoint=payload.endpoint, p256dh=payload.keys.p256dh, auth=payload.keys.auth
-    )
+    try:
+        push_service.upsert_subscription(
+            db, user_id=current_user.id, endpoint=payload.endpoint, p256dh=payload.keys.p256dh, auth=payload.keys.auth
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.delete("/subscribe", status_code=status.HTTP_204_NO_CONTENT)
