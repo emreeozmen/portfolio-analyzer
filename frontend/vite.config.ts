@@ -48,6 +48,8 @@ export default defineConfig({
     },
   },
   build: {
+    // Keep generated files separate from the /assets application route.
+    assetsDir: 'static',
     rollupOptions: {
       output: {
         // These are the heaviest third-party dependencies (see CLAUDE.md's design-system
