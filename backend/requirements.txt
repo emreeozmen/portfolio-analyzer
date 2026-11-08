@@ -1,5 +1,5 @@
 fastapi==0.141.1
-uvicorn[standard]==0.30.6
+uvicorn[standard]==0.52.4
 sqlalchemy==2.0.35
 pyodbc==5.1.0
 psycopg2-binary==2.9.9  # optional — only needed when DATABASE_URL points at Postgres (e.g. a Render deployment); MSSQL/pyodbc stays the local-dev default
