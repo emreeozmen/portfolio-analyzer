@@ -34,7 +34,8 @@ def _encode_token(payload: dict, expires_delta: timedelta) -> str:
 
 
 def _decode_token(token: str) -> dict:
-    return jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+    return jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm],
+                      options={"require": ["exp", "sub", "purpose"]})
 
 
 def issue_token_for_user(
@@ -102,15 +103,15 @@ def issue_email_verification_token(user: User) -> str:
     no UserSession row), and registration itself is never gated on this ever being
     redeemed."""
     return _encode_token(
-        {"sub": str(user.id), "purpose": "email_verify"}, timedelta(hours=EMAIL_VERIFICATION_EXPIRE_HOURS)
+        {"sub": str(user.id), "purpose": "email_verify", "email": user.email}, timedelta(hours=EMAIL_VERIFICATION_EXPIRE_HOURS)
     )
 
 
-def decode_email_verification_token(token: str) -> int:
+def decode_email_verification_token(token: str) -> tuple[int, str]:
     payload = _decode_token(token)
-    if payload.get("purpose") != "email_verify":
+    if payload.get("purpose") != "email_verify" or not isinstance(payload.get("email"), str):
         raise ValueError("Not an email verification token")
-    return int(payload["sub"])
+    return int(payload["sub"]), payload["email"]
 
 
 def password_fingerprint(hashed_password: str) -> str:
@@ -201,11 +202,11 @@ def authenticate_user(db: Session, email: str, password: str) -> User | None:
 def update_password(db: Session, user: User, current_password: str, new_password: str) -> None:
     if not verify_password(current_password, user.hashed_password):
         raise ValueError("Mevcut şifre yanlış")
-    user.hashed_password = hash_password(new_password)
-    db.commit()
+    reset_password(db, user, new_password)
 
 
 def update_email(db: Session, user: User, new_email: str, current_password: str) -> User:
+    user = db.query(User).filter(User.id == user.id).with_for_update().populate_existing().one()
     if not verify_password(current_password, user.hashed_password):
         raise ValueError("Şifre yanlış")
     existing = get_user_by_email(db, new_email)

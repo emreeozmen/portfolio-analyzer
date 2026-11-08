@@ -20,6 +20,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 from typing import Any
+from collections.abc import Awaitable, Callable
 
 from fastapi import WebSocket
 
@@ -29,11 +30,16 @@ logger = logging.getLogger("uvicorn.error")
 
 REDIS_PUBSUB_CHANNEL = "pa:ws:broadcast"
 SEND_TIMEOUT_SECONDS = 5
+ALLOWED_CHANNELS = frozenset({
+    "quotes", "ticker-strip", "indices", "commodities", "crypto",
+    "crypto-global", "news", "prices-updated", "alerts",
+})
 
 
 @dataclass
 class _ConnectionState:
     user_id: int | None
+    authorize: Callable[[], Awaitable[bool]] | None = None
     channels: set[str] = field(default_factory=set)
     send_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
@@ -43,10 +49,13 @@ class ConnectionManager:
         self._connections: dict[WebSocket, _ConnectionState] = {}
         self._lock = asyncio.Lock()
 
-    async def connect(self, websocket: WebSocket, user_id: int | None) -> None:
+    async def connect(self, websocket: WebSocket, user_id: int | None,
+                      authorize: Callable[[], Awaitable[bool]] | None = None) -> None:
+        if user_id is not None and authorize is None:
+            raise ValueError("Authenticated connections require a session validator")
         await websocket.accept()
         async with self._lock:
-            self._connections[websocket] = _ConnectionState(user_id=user_id)
+            self._connections[websocket] = _ConnectionState(user_id=user_id, authorize=authorize)
 
     async def disconnect(self, websocket: WebSocket) -> None:
         async with self._lock:
@@ -56,7 +65,7 @@ class ConnectionManager:
         async with self._lock:
             state = self._connections.get(websocket)
             if state is not None:
-                state.channels.update(channels)
+                state.channels.update(channel for channel in channels if channel in ALLOWED_CHANNELS)
 
     async def unsubscribe(self, websocket: WebSocket, channels: list[str]) -> None:
         async with self._lock:
@@ -113,6 +122,10 @@ class ConnectionManager:
                 # broadcasts must never write to the same socket at the same time.
                 async with asyncio.timeout(SEND_TIMEOUT_SECONDS):
                     async with state.send_lock:
+                        if state.authorize is not None and not await state.authorize():
+                            await self.disconnect(ws)
+                            await ws.close(code=1008)
+                            return
                         await ws.send_json(message)
             except Exception:
                 await self.disconnect(ws)

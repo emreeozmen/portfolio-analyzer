@@ -225,7 +225,7 @@ async def get_asset_fundamentals(ticker: str, db: Session = Depends(get_db)):
 
 
 @router.post("/{ticker}/refresh", dependencies=[Depends(rate_limit.throttle(20, 60))])
-def refresh_asset(ticker: str, db: Session = Depends(get_db)):
+def refresh_asset(ticker: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     asset = asset_service.get_asset_by_ticker(db, ticker)
     if asset is None:
         raise HTTPException(status_code=404, detail=f"Asset '{ticker}' not found")
@@ -257,7 +257,7 @@ def refresh_asset(ticker: str, db: Session = Depends(get_db)):
 
 
 @router.post("/refresh-all", dependencies=[Depends(rate_limit.throttle(3, 300))])
-def refresh_all_assets(db: Session = Depends(get_db)):
+def refresh_all_assets(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     refreshed: list[str] = []
     failed: list[dict[str, str]] = []
 

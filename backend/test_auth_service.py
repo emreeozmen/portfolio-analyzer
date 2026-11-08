@@ -104,7 +104,7 @@ def test_email_verification_token_round_trip(db_session):
 
     token = auth_service.issue_email_verification_token(user)
 
-    assert auth_service.decode_email_verification_token(token) == user.id
+    assert auth_service.decode_email_verification_token(token) == (user.id, user.email)
 
 
 def test_decode_email_verification_token_rejects_a_2fa_challenge_token(db_session):

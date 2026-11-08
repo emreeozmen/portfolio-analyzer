@@ -10,6 +10,9 @@ regardless of whether push is set up.
 
 import json
 import logging
+from urllib.parse import urlsplit
+
+import requests
 
 from pywebpush import WebPushException, webpush
 from sqlalchemy.orm import Session
@@ -20,14 +23,42 @@ from models import PushSubscription
 logger = logging.getLogger("uvicorn.error")
 
 
+def validate_endpoint(endpoint: str) -> str:
+    """Only browser push providers may receive server-side notification requests."""
+    try:
+        url = urlsplit(endpoint)
+        host = url.hostname or ""
+        trusted = host in {"fcm.googleapis.com", "updates.push.services.mozilla.com", "web.push.apple.com"}
+        trusted = trusted or host.endswith(".push.apple.com") or host.endswith(".notify.windows.com")
+        if (
+            not trusted or url.scheme != "https" or url.port not in (None, 443)
+            or url.username is not None or url.password is not None or url.fragment
+            or not url.path or "\\" in endpoint or any(ord(char) <= 32 for char in endpoint)
+            or len(endpoint) > 2048
+        ):
+            raise ValueError("Unsupported push endpoint")
+    except (ValueError, TypeError) as exc:
+        raise ValueError("Unsupported push endpoint") from exc
+    return endpoint
+
+
+class _PushSession(requests.Session):
+    def request(self, method, url, **kwargs):
+        validate_endpoint(url)
+        kwargs["allow_redirects"] = False
+        return super().request(method, url, **kwargs)
+
+
 def is_configured() -> bool:
     return bool(settings.vapid_public_key and settings.vapid_private_key)
 
 
 def upsert_subscription(db: Session, user_id: int, endpoint: str, p256dh: str, auth: str) -> PushSubscription:
+    validate_endpoint(endpoint)
     existing = db.query(PushSubscription).filter(PushSubscription.endpoint == endpoint).first()
     if existing:
-        existing.user_id = user_id
+        if existing.user_id != user_id:
+            raise ValueError("Subscription already belongs to another account")
         existing.p256dh = p256dh
         existing.auth = auth
         db.commit()
@@ -56,15 +87,20 @@ def remove_subscription(db: Session, user_id: int, endpoint: str) -> bool:
 
 def _send_to_subscription(db: Session, subscription: PushSubscription, payload: dict) -> bool:
     try:
-        webpush(
-            subscription_info={
-                "endpoint": subscription.endpoint,
-                "keys": {"p256dh": subscription.p256dh, "auth": subscription.auth},
-            },
-            data=json.dumps(payload),
-            vapid_private_key=settings.vapid_private_key,
-            vapid_claims={"sub": settings.vapid_subject},
-        )
+        validate_endpoint(subscription.endpoint)
+        with _PushSession() as session:
+            session.trust_env = False
+            webpush(
+                subscription_info={
+                    "endpoint": subscription.endpoint,
+                    "keys": {"p256dh": subscription.p256dh, "auth": subscription.auth},
+                },
+                data=json.dumps(payload),
+                vapid_private_key=settings.vapid_private_key,
+                vapid_claims={"sub": settings.vapid_subject},
+                requests_session=session,
+                timeout=10,
+            )
         return True
     except WebPushException as exc:
         status_code = exc.response.status_code if exc.response is not None else None
