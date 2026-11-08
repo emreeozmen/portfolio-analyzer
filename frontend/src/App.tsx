@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Layout from './components/Layout'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -29,7 +29,6 @@ const PublicPortfolioPage = lazy(() => import('./pages/PublicPortfolio'))
 const AdminUsersPage = lazy(() => import('./pages/AdminUsers'))
 const VerifyEmailPage = lazy(() => import('./pages/VerifyEmail'))
 const ResetPasswordPage = lazy(() => import('./pages/ResetPassword'))
-const DemoPortfolioPage = lazy(() => import('./pages/DemoPortfolio'))
 
 function RouteFallback() {
   const { t } = useTranslation('common')
@@ -68,7 +67,7 @@ function AppRoutes({
         <div key={location.pathname} className="page-transition">
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/demo" element={<DemoPortfolioPage />} />
+            <Route path="/demo" element={<Navigate to="/" replace />} />
             <Route path="/market" element={<MarketDashboardPage />} />
             <Route path="/assets" element={<AssetScreenerPage />} />
             <Route path="/karsilastir" element={<AssetComparePage />} />

@@ -1,6 +1,7 @@
 {
   "newsCta": "Finansal haberlere git",
-  "demoCta": "Kayıtsız örnek portföyü keşfet",
+  "tickerPause": "Piyasa şeridini duraklat",
+  "tickerPlay": "Piyasa şeridini oynat",
   "historyRanges": { "all": "Tümü" },
   "hero": {
     "eyebrow": "BIST + Küresel Piyasalar · Risk & Portföy Analitiği",

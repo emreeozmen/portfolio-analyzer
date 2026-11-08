@@ -539,42 +539,56 @@
 /* --- Live ticker strip (own component, real backend data, Home page only) --- */
 
 .ticker-strip {
+  display: flex;
+  align-items: center;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
   overflow: hidden;
-  padding: 10px 0;
 }
 
 .ticker-strip-track {
   display: flex;
-  width: max-content;
+  flex: 1;
+  overflow: hidden;
+  padding: 10px 0;
+}
+
+.ticker-strip-group {
+  display: flex;
+  flex: none;
+  min-width: 100%;
   animation: ticker-scroll 32s linear infinite;
 }
 
-.ticker-strip-track:hover {
+.ticker-strip-track[data-paused='true'] .ticker-strip-group {
   animation-play-state: paused;
 }
 
 @keyframes ticker-scroll {
   from {
-    transform: translateX(0);
+    transform: translateX(-100%);
   }
   to {
-    transform: translateX(-50%);
+    transform: translateX(0);
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .ticker-strip {
-    overflow-x: auto;
-  }
-  .ticker-strip-track {
-    animation: none;
-  }
+.ticker-strip-toggle {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
 }
 
 .ticker-strip-item {
   display: inline-flex;
+  flex: 1 0 auto;
+  justify-content: center;
   align-items: baseline;
   gap: 9px;
   padding: 0 22px;

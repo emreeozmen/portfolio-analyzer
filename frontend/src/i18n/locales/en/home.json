@@ -1,6 +1,7 @@
 {
   "newsCta": "Jump to financial news",
-  "demoCta": "Explore a portfolio without signing up",
+  "tickerPause": "Pause market ticker",
+  "tickerPlay": "Play market ticker",
   "historyRanges": { "all": "All" },
   "hero": {
     "eyebrow": "BIST + Global Markets · Risk & Portfolio Analytics",

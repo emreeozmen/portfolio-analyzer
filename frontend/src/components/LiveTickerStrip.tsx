@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Pause, Play } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { getTickerStrip, type TickerStripQuote } from '../api'
 import { useLiveChannel } from '../lib/useLiveChannel'
@@ -24,7 +25,8 @@ function TickerItem({ quote }: { quote: TickerStripQuote }) {
 }
 
 function LiveTickerStrip() {
-  useTranslation() // subscribes to language changes so formatValue's locale re-reads on toggle
+  const { t } = useTranslation('home')
+  const [paused, setPaused] = useState(false)
   const [quotes, setQuotes] = useState<TickerStripQuote[]>([])
   const live = useLiveChannel<TickerStripQuote[]>('ticker-strip')
 
@@ -45,16 +47,18 @@ function LiveTickerStrip() {
   if (quotes.length === 0) return null
 
   return (
-    // Decorative, continuously-updating marquee (duplicated content, no way to pause
-    // it) — the same figures are available in accessible, non-marquee form on
-    // Piyasa Görünümü, so this is hidden from assistive tech rather than announced
-    // via aria-live, which would otherwise re-read the whole strip on every tick.
-    <div className="ticker-strip" aria-hidden="true">
-      <div className="ticker-strip-track">
-        {[...quotes, ...quotes].map((q, i) => (
-          <TickerItem key={`${q.symbol}-${i}`} quote={q} />
+    <div className="ticker-strip">
+      <div className="ticker-strip-track" data-paused={paused}>
+        {[0, 1].map((copy) => (
+          <div key={copy} className="ticker-strip-group" aria-hidden={copy === 1}>
+            {quotes.map((quote) => <TickerItem key={quote.symbol} quote={quote} />)}
+          </div>
         ))}
       </div>
+      <button type="button" className="ticker-strip-toggle" onClick={() => setPaused(!paused)}
+        aria-label={t(paused ? 'tickerPlay' : 'tickerPause')} title={t(paused ? 'tickerPlay' : 'tickerPause')}>
+        {paused ? <Play size={14} /> : <Pause size={14} />}
+      </button>
     </div>
   )
 }
